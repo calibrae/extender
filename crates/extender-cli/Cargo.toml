@@ -11,3 +11,9 @@ path = "src/main.rs"
 
 [dependencies]
 extender-api = { path = "../extender-api" }
+extender-daemon = { path = "../extender-daemon" }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }

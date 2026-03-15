@@ -7,3 +7,10 @@ description = "USB/IP client logic"
 
 [dependencies]
 extender-protocol = { path = "../extender-protocol" }
+bytes = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }

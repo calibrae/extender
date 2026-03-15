@@ -74,6 +74,22 @@ pub enum ServerError {
     /// A protocol-level error (e.g., invalid bus ID format).
     #[error("protocol error: {0}")]
     Protocol(#[from] extender_protocol::ProtocolError),
+
+    /// The device is already bound (exported) in the registry.
+    #[error("device {bus_id} is already bound for export")]
+    DeviceAlreadyBound { bus_id: String },
+
+    /// The device is not bound (not in the export registry).
+    #[error("device {bus_id} is not bound for export")]
+    DeviceNotBound { bus_id: String },
+
+    /// Failed to bind the TCP listener.
+    #[error("failed to bind TCP listener: {0}")]
+    ListenerBind(#[source] std::io::Error),
+
+    /// An I/O error occurred during connection handling.
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 /// Map a `rusb::Error` to a Linux errno value for USB/IP protocol compatibility.
