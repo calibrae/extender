@@ -32,4 +32,12 @@ pub enum ProtocolError {
     /// The status field indicates an error from the remote side.
     #[error("remote status error: {0}")]
     RemoteError(u32),
+
+    /// Transfer buffer length exceeds the maximum allowed size.
+    #[error("transfer buffer too large: {length} bytes (max {max})")]
+    TransferTooLarge { length: u32, max: u32 },
+
+    /// Device count exceeds the maximum allowed in a DEVLIST reply.
+    #[error("too many devices in DEVLIST: {count} (max {max})")]
+    TooManyDevices { count: u32, max: u32 },
 }

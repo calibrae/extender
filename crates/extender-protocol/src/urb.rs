@@ -27,6 +27,13 @@ pub const CMD_UNLINK_FIELDS_SIZE: usize = 28;
 /// Size of RET_UNLINK specific fields (after the basic header).
 pub const RET_UNLINK_FIELDS_SIZE: usize = 28;
 
+/// Maximum allowed transfer buffer length (1 MB).
+/// Matches Linux kernel behavior. Prevents memory exhaustion from malicious peers.
+pub const MAX_TRANSFER_BUFFER_LENGTH: u32 = 1_048_576;
+
+/// Maximum number of devices in a DEVLIST reply.
+pub const MAX_DEVICES_IN_DEVLIST: u32 = 256;
+
 /// Total header size for all URB messages (basic + specific = 48 bytes).
 pub const URB_HEADER_TOTAL_SIZE: usize = 48;
 
@@ -142,6 +149,12 @@ impl WireFormat for CmdSubmit {
 
         let transfer_flags = buf.get_u32();
         let transfer_buffer_length = buf.get_u32();
+        if transfer_buffer_length > MAX_TRANSFER_BUFFER_LENGTH {
+            return Err(ProtocolError::TransferTooLarge {
+                length: transfer_buffer_length,
+                max: MAX_TRANSFER_BUFFER_LENGTH,
+            });
+        }
         let start_frame = buf.get_u32();
         let number_of_packets = buf.get_u32();
         let interval = buf.get_u32();
@@ -165,13 +178,10 @@ impl WireFormat for CmdSubmit {
         }
 
         let transfer_buffer = if buf_len > 0 {
-            Bytes::copy_from_slice(&buf.chunk()[..buf_len])
+            buf.copy_to_bytes(buf_len)
         } else {
             Bytes::new()
         };
-        if buf_len > 0 {
-            buf.advance(buf_len);
-        }
 
         Ok(CmdSubmit {
             header,
@@ -247,6 +257,12 @@ impl WireFormat for RetSubmit {
 
         let status = buf.get_i32();
         let actual_length = buf.get_u32();
+        if actual_length > MAX_TRANSFER_BUFFER_LENGTH {
+            return Err(ProtocolError::TransferTooLarge {
+                length: actual_length,
+                max: MAX_TRANSFER_BUFFER_LENGTH,
+            });
+        }
         let start_frame = buf.get_u32();
         let number_of_packets = buf.get_u32();
         let error_count = buf.get_u32();
@@ -267,13 +283,10 @@ impl WireFormat for RetSubmit {
         }
 
         let transfer_buffer = if buf_len > 0 {
-            Bytes::copy_from_slice(&buf.chunk()[..buf_len])
+            buf.copy_to_bytes(buf_len)
         } else {
             Bytes::new()
         };
-        if buf_len > 0 {
-            buf.advance(buf_len);
-        }
 
         Ok(RetSubmit {
             header,

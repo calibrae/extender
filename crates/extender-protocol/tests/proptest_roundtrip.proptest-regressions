@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e0d3406454fbd51dec0888fe6ea88e2cf10c76371ecc94ca021f9ac551c93ef6 # shrinks to header = UsbipHeaderBasic { command: 1, seqnum: 0, devid: 0, direction: 1, ep: 0 }, transfer_flags = 0, transfer_buffer_length = 1048577, start_frame = 0, number_of_packets = 0, interval = 0, setup = [0, 0, 0, 0, 0, 0, 0, 0]

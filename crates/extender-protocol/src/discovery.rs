@@ -106,7 +106,14 @@ impl WireFormat for OpRepDevlist {
             return Err(ProtocolError::InvalidOpCode(code));
         }
         let status = buf.get_u32();
-        let num_devices = buf.get_u32() as usize;
+        let num_devices_raw = buf.get_u32();
+        if num_devices_raw > crate::urb::MAX_DEVICES_IN_DEVLIST {
+            return Err(ProtocolError::TooManyDevices {
+                count: num_devices_raw,
+                max: crate::urb::MAX_DEVICES_IN_DEVLIST,
+            });
+        }
+        let num_devices = num_devices_raw as usize;
 
         let mut devices = Vec::with_capacity(num_devices);
         for _ in 0..num_devices {

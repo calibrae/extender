@@ -44,7 +44,14 @@ pub async fn read_op_message<R: AsyncReadExt + Unpin>(
             let mut rest = [0u8; 8];
             reader.read_exact(&mut rest).await?;
             let status = u32::from_be_bytes([rest[0], rest[1], rest[2], rest[3]]);
-            let num_devices = u32::from_be_bytes([rest[4], rest[5], rest[6], rest[7]]) as usize;
+            let num_devices_raw = u32::from_be_bytes([rest[4], rest[5], rest[6], rest[7]]);
+            if num_devices_raw > crate::urb::MAX_DEVICES_IN_DEVLIST {
+                return Err(ProtocolError::TooManyDevices {
+                    count: num_devices_raw,
+                    max: crate::urb::MAX_DEVICES_IN_DEVLIST,
+                });
+            }
+            let num_devices = num_devices_raw as usize;
 
             let mut devices = Vec::with_capacity(num_devices);
             for _ in 0..num_devices {
@@ -148,6 +155,12 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
             let transfer_flags = u32::from_be_bytes([fields[0], fields[1], fields[2], fields[3]]);
             let transfer_buffer_length =
                 u32::from_be_bytes([fields[4], fields[5], fields[6], fields[7]]);
+            if transfer_buffer_length > MAX_TRANSFER_BUFFER_LENGTH {
+                return Err(ProtocolError::TransferTooLarge {
+                    length: transfer_buffer_length,
+                    max: MAX_TRANSFER_BUFFER_LENGTH,
+                });
+            }
             let start_frame = u32::from_be_bytes([fields[8], fields[9], fields[10], fields[11]]);
             let number_of_packets =
                 u32::from_be_bytes([fields[12], fields[13], fields[14], fields[15]]);
@@ -182,6 +195,12 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
 
             let status = i32::from_be_bytes([fields[0], fields[1], fields[2], fields[3]]);
             let actual_length = u32::from_be_bytes([fields[4], fields[5], fields[6], fields[7]]);
+            if actual_length > MAX_TRANSFER_BUFFER_LENGTH {
+                return Err(ProtocolError::TransferTooLarge {
+                    length: actual_length,
+                    max: MAX_TRANSFER_BUFFER_LENGTH,
+                });
+            }
             let start_frame = u32::from_be_bytes([fields[8], fields[9], fields[10], fields[11]]);
             let number_of_packets =
                 u32::from_be_bytes([fields[12], fields[13], fields[14], fields[15]]);

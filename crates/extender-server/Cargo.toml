@@ -3,7 +3,11 @@ name = "extender-server"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
-description = "USB/IP server logic"
+description = "USB/IP server logic: device enumeration, handle management, and transfer execution"
 
 [dependencies]
 extender-protocol = { path = "../extender-protocol" }
+rusb = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }

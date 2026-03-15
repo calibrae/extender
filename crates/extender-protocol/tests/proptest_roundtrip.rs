@@ -216,7 +216,7 @@ proptest! {
     fn roundtrip_cmd_submit_in(
         header in arb_header_basic(Command::CmdSubmit).prop_map(|mut h| { h.direction = 1; h }),
         transfer_flags in any::<u32>(),
-        transfer_buffer_length in any::<u32>(),
+        transfer_buffer_length in 0u32..=1_048_576u32,
         start_frame in any::<u32>(),
         number_of_packets in any::<u32>(),
         interval in any::<u32>(),
@@ -268,7 +268,7 @@ proptest! {
     fn roundtrip_ret_submit_out(
         header in arb_header_basic(Command::RetSubmit).prop_map(|mut h| { h.direction = 0; h }),
         status in any::<i32>(),
-        actual_length in any::<u32>(),
+        actual_length in 0u32..=1_048_576u32,
         start_frame in any::<u32>(),
         number_of_packets in any::<u32>(),
         error_count in any::<u32>(),
