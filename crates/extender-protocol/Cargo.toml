@@ -1,0 +1,15 @@
+[package]
+name = "extender-protocol"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "USB/IP v1.1.1 wire format types and serialization"
+
+[dependencies]
+bytes = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }

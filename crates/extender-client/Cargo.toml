@@ -1,0 +1,9 @@
+[package]
+name = "extender-client"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "USB/IP client logic"
+
+[dependencies]
+extender-protocol = { path = "../extender-protocol" }

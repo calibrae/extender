@@ -1,0 +1,13 @@
+[package]
+name = "extender-cli"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Extender command-line interface"
+
+[[bin]]
+name = "extender"
+path = "src/main.rs"
+
+[dependencies]
+extender-api = { path = "../extender-api" }

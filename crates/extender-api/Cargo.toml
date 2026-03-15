@@ -1,0 +1,9 @@
+[package]
+name = "extender-api"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Shared API types for Extender JSON-RPC interface"
+
+[dependencies]
+serde = { workspace = true }

@@ -1,0 +1,12 @@
+[package]
+name = "extender-daemon"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Extender daemon process"
+
+[dependencies]
+extender-protocol = { path = "../extender-protocol" }
+extender-api = { path = "../extender-api" }
+extender-server = { path = "../extender-server" }
+extender-client = { path = "../extender-client" }
