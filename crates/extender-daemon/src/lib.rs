@@ -59,8 +59,18 @@ impl Daemon {
     /// 5. Run API server until shutdown
     /// 6. Clean up
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        // PID file
-        privileges::create_pid_file(&self.config.daemon.pid_file)?;
+        // PID file — derive from socket path if not explicitly configured
+        let pid_file = if self.config.daemon.pid_file.ends_with("/extender.pid") {
+            // Use same directory as socket
+            let socket_dir = std::path::Path::new(&self.config.daemon.socket_path)
+                .parent()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "/tmp".to_string());
+            format!("{}/extender.pid", socket_dir)
+        } else {
+            self.config.daemon.pid_file.clone()
+        };
+        privileges::create_pid_file(&pid_file)?;
 
         // Drop privileges if configured.
         if let (Some(user), Some(group)) = (
@@ -73,15 +83,32 @@ impl Daemon {
         // Shared API state.
         let state = Arc::new(api_server::ApiState::new());
 
+        // Start USB/IP TCP server.
+        let listen_addr = format!(
+            "{}:{}",
+            self.config.server.listen_address, self.config.server.port
+        );
+        let server_engine = match extender_server::ServerEngine::new(listen_addr.parse()?).await {
+            Ok(engine) => {
+                info!(
+                    listen = %self.config.server.listen_address,
+                    port = self.config.server.port,
+                    "USB/IP server listening"
+                );
+                Some(engine)
+            }
+            Err(e) => {
+                warn!("failed to start USB/IP server: {}", e);
+                None
+            }
+        };
+
         // Signal handler with config reload on SIGHUP.
         let reload_config = {
             let socket_path = self.config.daemon.socket_path.clone();
             move || {
                 info!("reloading configuration");
                 let new_config = Config::load();
-                // Hot-reload: update log level filter.
-                // In a production implementation, we would update a shared Arc<RwLock<Config>>.
-                // For now we just log what would change.
                 info!(
                     "new log level: {}, socket: {}",
                     new_config.daemon.log_level, socket_path
@@ -91,16 +118,30 @@ impl Daemon {
 
         let _signal_handle = signals::spawn_signal_handler(self.shutdown.clone(), reload_config);
 
-        // Run the API server.
-        let api_result = api_server::run_api_server(
-            &self.config.daemon.socket_path,
-            self.shutdown.clone(),
-            state,
-        )
-        .await;
+        // Run USB/IP server and API server concurrently.
+        let shutdown = self.shutdown.clone();
+        let server_handle = if let Some(engine) = server_engine {
+            let shutdown_token = shutdown.clone();
+            Some(tokio::spawn(async move {
+                if let Err(e) = engine.run_until_shutdown(shutdown_token.cancelled()).await {
+                    tracing::warn!("USB/IP server error: {}", e);
+                }
+            }))
+        } else {
+            None
+        };
+
+        // Run the API server (blocks until shutdown).
+        let api_result =
+            api_server::run_api_server(&self.config.daemon.socket_path, shutdown, state).await;
+
+        // Wait for server to finish.
+        if let Some(handle) = server_handle {
+            let _ = handle.await;
+        }
 
         // Cleanup.
-        privileges::remove_pid_file(&self.config.daemon.pid_file);
+        privileges::remove_pid_file(&pid_file);
 
         if let Err(e) = api_result {
             warn!("API server exited with error: {}", e);

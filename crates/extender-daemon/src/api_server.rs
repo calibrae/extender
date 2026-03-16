@@ -184,7 +184,29 @@ async fn dispatch(
 // ---------------------------------------------------------------------------
 
 fn handle_list_local_devices() -> Result<serde_json::Value, JsonRpcError> {
-    let devices: Vec<DeviceInfo> = vec![];
+    let local_devices = extender_server::device::enumerate_devices()
+        .map_err(|e| JsonRpcError::internal_error(format!("USB enumeration failed: {e}")))?;
+
+    let devices: Vec<DeviceInfo> = local_devices
+        .iter()
+        .map(|d| DeviceInfo {
+            bus_id: d.bus_id.clone(),
+            vendor_id: d.vendor_id,
+            product_id: d.product_id,
+            manufacturer: d.manufacturer.clone(),
+            product: d.product.clone(),
+            device_class: d.device_class,
+            speed: match d.speed {
+                1 => UsbSpeed::Low,
+                2 => UsbSpeed::Full,
+                3 => UsbSpeed::High,
+                5 => UsbSpeed::Super,
+                _ => UsbSpeed::Unknown,
+            },
+            is_bound: false,
+        })
+        .collect();
+
     serde_json::to_value(&devices).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 

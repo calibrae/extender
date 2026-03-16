@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 extender-api = { path = "../extender-api" }
+extender-client = { path = "../extender-client" }
 extender-daemon = { path = "../extender-daemon" }
 clap = { workspace = true }
 tokio = { workspace = true }
