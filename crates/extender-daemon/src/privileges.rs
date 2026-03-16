@@ -52,7 +52,27 @@ pub fn create_pid_file(path: &str) -> Result<(), PrivilegeError> {
     }
 
     let pid = std::process::id();
-    fs::write(pid_path, format!("{}\n", pid))?;
+
+    // Atomically create the PID file; if it already exists (race condition),
+    // treat it as a stale-PID error.
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(pid_path)
+    {
+        Ok(mut file) => {
+            use std::io::Write;
+            writeln!(file, "{}", pid)?;
+        }
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            return Err(PrivilegeError::PidFileStale {
+                path: path.to_string(),
+                pid: 0,
+            });
+        }
+        Err(e) => return Err(PrivilegeError::Io(e)),
+    }
+
     info!("created PID file: {} (pid={})", path, pid);
     Ok(())
 }
@@ -116,13 +136,16 @@ pub fn drop_privileges(user: &str, group: &str) -> Result<(), PrivilegeError> {
             info!("set gid to {} ({})", group, grp.gid);
         }
         Ok(None) => {
-            warn!("group '{}' not found, skipping setgid", group);
+            return Err(PrivilegeError::DropFailed(format!(
+                "group '{}' not found",
+                group
+            )));
         }
         Err(e) => {
-            warn!(
-                "failed to look up group '{}': {}, skipping setgid",
+            return Err(PrivilegeError::DropFailed(format!(
+                "failed to look up group '{}': {}",
                 group, e
-            );
+            )));
         }
     }
 
@@ -133,10 +156,16 @@ pub fn drop_privileges(user: &str, group: &str) -> Result<(), PrivilegeError> {
             info!("set uid to {} ({})", user, usr.uid);
         }
         Ok(None) => {
-            warn!("user '{}' not found, skipping setuid", user);
+            return Err(PrivilegeError::DropFailed(format!(
+                "user '{}' not found",
+                user
+            )));
         }
         Err(e) => {
-            warn!("failed to look up user '{}': {}, skipping setuid", user, e);
+            return Err(PrivilegeError::DropFailed(format!(
+                "failed to look up user '{}': {}",
+                user, e
+            )));
         }
     }
 
@@ -193,9 +222,24 @@ mod tests {
         assert_eq!(file_pid, std::process::id());
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_drop_privileges_nonexistent_user() {
-        // Should warn but not error.
+        // Should fail with DropFailed for nonexistent user/group.
+        let result = drop_privileges("nonexistent_user_xyz", "nonexistent_group_xyz");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PrivilegeError::DropFailed(msg) => {
+                assert!(msg.contains("not found"), "unexpected message: {msg}");
+            }
+            other => panic!("expected DropFailed, got: {other:?}"),
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    #[test]
+    fn test_drop_privileges_nonexistent_user() {
+        // On non-Linux, drop_privileges is a no-op.
         let result = drop_privileges("nonexistent_user_xyz", "nonexistent_group_xyz");
         assert!(result.is_ok());
     }

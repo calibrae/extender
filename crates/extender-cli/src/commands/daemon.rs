@@ -35,6 +35,12 @@ pub async fn run(
         config.daemon.log_level = level.to_string();
     }
 
+    // Warn if listening on a non-localhost address.
+    let listen_addr = config.server.listen_address.as_str();
+    if listen_addr != "127.0.0.1" && listen_addr != "::1" && listen_addr != "localhost" {
+        eprintln!("WARNING: USB/IP server listening on non-localhost address. Traffic is unencrypted. Use a VPN or SSH tunnel for security.");
+    }
+
     let daemon = Daemon::new(config);
     daemon.init_logging();
     daemon.run().await

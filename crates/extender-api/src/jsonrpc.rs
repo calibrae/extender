@@ -134,8 +134,8 @@ pub enum FramingError {
     ConnectionClosed,
 }
 
-/// Maximum message size: 16 MiB.
-pub const MAX_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
+/// Maximum message size: 64 KiB.
+pub const MAX_MESSAGE_SIZE: u32 = 65536;
 
 /// Write a length-prefixed message: 4-byte big-endian length followed by the payload.
 pub async fn write_message<W: AsyncWriteExt + Unpin>(

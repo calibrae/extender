@@ -174,8 +174,10 @@ async fn dispatch(
 // ---------------------------------------------------------------------------
 
 fn handle_list_local_devices() -> Result<serde_json::Value, JsonRpcError> {
-    let local_devices = extender_server::device::enumerate_devices()
-        .map_err(|e| JsonRpcError::internal_error(format!("USB enumeration failed: {e}")))?;
+    let local_devices = extender_server::device::enumerate_devices().map_err(|e| {
+        tracing::debug!("USB enumeration failed: {e}");
+        JsonRpcError::internal_error("USB enumeration failed".to_string())
+    })?;
 
     let devices: Vec<DeviceInfo> = local_devices
         .iter()
@@ -231,7 +233,10 @@ async fn handle_list_remote_devices(
 
     let remote_devices = extender_client::remote::list_remote_devices(addr)
         .await
-        .map_err(|e| JsonRpcError::internal_error(format!("remote list failed: {e}")))?;
+        .map_err(|e| {
+            tracing::debug!("remote list failed: {e}");
+            JsonRpcError::internal_error("remote list failed".to_string())
+        })?;
 
     let devices: Vec<DeviceInfo> = remote_devices
         .iter()
@@ -262,11 +267,10 @@ async fn handle_bind_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
-    state
-        .registry
-        .bind_device(bus_id)
-        .await
-        .map_err(|e| JsonRpcError::internal_error(format!("{e}")))?;
+    state.registry.bind_device(bus_id).await.map_err(|e| {
+        tracing::debug!("bind_device failed: {e}");
+        JsonRpcError::internal_error("bind device failed".to_string())
+    })?;
 
     Ok(serde_json::json!({"status": "ok", "bus_id": bus_id}))
 }
@@ -283,11 +287,10 @@ async fn handle_unbind_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
-    let session = state
-        .registry
-        .unbind_device(bus_id)
-        .await
-        .map_err(|e| JsonRpcError::internal_error(format!("{e}")))?;
+    let session = state.registry.unbind_device(bus_id).await.map_err(|e| {
+        tracing::debug!("unbind_device failed: {e}");
+        JsonRpcError::internal_error("unbind device failed".to_string())
+    })?;
 
     Ok(serde_json::json!({
         "status": "ok",
@@ -319,12 +322,17 @@ async fn handle_attach_device(
         .parse()
         .map_err(|e| JsonRpcError::invalid_params(format!("invalid address: {e}")))?;
 
-    let client_engine = extender_client::ClientEngine::new()
-        .map_err(|e| JsonRpcError::internal_error(format!("client init failed: {e}")))?;
+    let client_engine = extender_client::ClientEngine::new().map_err(|e| {
+        tracing::debug!("client init failed: {e}");
+        JsonRpcError::internal_error("client initialization failed".to_string())
+    })?;
     let attached = client_engine
         .attach_device(addr, bus_id)
         .await
-        .map_err(|e| JsonRpcError::internal_error(format!("attach failed: {e}")))?;
+        .map_err(|e| {
+            tracing::debug!("attach failed: {e}");
+            JsonRpcError::internal_error("attach device failed".to_string())
+        })?;
 
     Ok(serde_json::json!({
         "status": "ok",
@@ -344,12 +352,14 @@ async fn handle_detach_device(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'port'"))? as u32;
 
-    let client_engine = extender_client::ClientEngine::new()
-        .map_err(|e| JsonRpcError::internal_error(format!("client init failed: {e}")))?;
-    client_engine
-        .detach_device(port)
-        .await
-        .map_err(|e| JsonRpcError::internal_error(format!("detach failed: {e}")))?;
+    let client_engine = extender_client::ClientEngine::new().map_err(|e| {
+        tracing::debug!("client init failed: {e}");
+        JsonRpcError::internal_error("client initialization failed".to_string())
+    })?;
+    client_engine.detach_device(port).await.map_err(|e| {
+        tracing::debug!("detach failed: {e}");
+        JsonRpcError::internal_error("detach device failed".to_string())
+    })?;
 
     Ok(serde_json::json!({"status": "ok", "port": port}))
 }
@@ -385,8 +395,10 @@ fn handle_get_device_info(
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
     // Try to find in local devices
-    let local_devices = extender_server::device::enumerate_devices()
-        .map_err(|e| JsonRpcError::internal_error(format!("{e}")))?;
+    let local_devices = extender_server::device::enumerate_devices().map_err(|e| {
+        tracing::debug!("device enumeration failed: {e}");
+        JsonRpcError::internal_error("device enumeration failed".to_string())
+    })?;
 
     let local = local_devices.iter().find(|d| d.bus_id == bus_id);
 

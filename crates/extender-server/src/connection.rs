@@ -5,6 +5,7 @@
 //! a device list or an import, then dispatches accordingly.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use tokio::net::TcpStream;
 
@@ -28,13 +29,18 @@ pub async fn handle_connection(
 ) {
     tracing::info!(%peer, "new connection");
 
-    let msg = match read_op_message(&mut stream).await {
-        Ok(m) => m,
-        Err(e) => {
-            tracing::warn!(%peer, "failed to read initial message: {}", e);
-            return;
-        }
-    };
+    let msg =
+        match tokio::time::timeout(Duration::from_secs(10), read_op_message(&mut stream)).await {
+            Ok(Ok(m)) => m,
+            Ok(Err(e)) => {
+                tracing::warn!(%peer, "failed to read initial message: {}", e);
+                return;
+            }
+            Err(_) => {
+                tracing::warn!(%peer, "timed out waiting for initial message");
+                return;
+            }
+        };
 
     match msg {
         OpMessage::ReqDevlist(_) => {
@@ -46,6 +52,15 @@ pub async fn handle_connection(
         }
         OpMessage::ReqImport(req) => {
             let bus_id = extract_bus_id(&req.busid);
+            if !is_valid_bus_id(&bus_id) {
+                tracing::warn!(%peer, bus_id, "invalid bus ID format, rejecting import");
+                let reply = OpMessage::RepImport(Box::new(OpRepImport {
+                    status: 1,
+                    device: None,
+                }));
+                let _ = write_op_message(&mut stream, &reply).await;
+                return;
+            }
             tracing::debug!(%peer, bus_id, "handling IMPORT request");
             match handle_import(&mut stream, &registry, &bus_id).await {
                 Ok(Some((handle, session_id))) => {
@@ -132,6 +147,31 @@ fn extract_bus_id(busid: &[u8; 32]) -> String {
     String::from_utf8_lossy(&busid[..end]).to_string()
 }
 
+/// Validate that a bus ID matches the expected pattern `[0-9]+-[0-9]+(\.[0-9]+)*`.
+///
+/// Examples of valid bus IDs: "1-1", "2-4", "1-4.2", "3-1.2.3".
+fn is_valid_bus_id(bus_id: &str) -> bool {
+    // Split on '-'; must have exactly two parts.
+    let mut parts = bus_id.splitn(2, '-');
+    let bus_part = match parts.next() {
+        Some(s) if !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()) => s,
+        _ => return false,
+    };
+    let dev_part = match parts.next() {
+        Some(s) if !s.is_empty() => s,
+        _ => return false,
+    };
+    // bus_part must be all digits (already checked above).
+    let _ = bus_part;
+    // dev_part must be dot-separated groups of digits, each non-empty.
+    for segment in dev_part.split('.') {
+        if segment.is_empty() || !segment.chars().all(|c| c.is_ascii_digit()) {
+            return false;
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +193,28 @@ mod tests {
     fn test_extract_bus_id_empty() {
         let busid = [0u8; 32];
         assert_eq!(extract_bus_id(&busid), "");
+    }
+
+    #[test]
+    fn test_valid_bus_ids() {
+        assert!(is_valid_bus_id("1-1"));
+        assert!(is_valid_bus_id("2-4"));
+        assert!(is_valid_bus_id("1-4.2"));
+        assert!(is_valid_bus_id("3-1.2.3"));
+        assert!(is_valid_bus_id("10-12.3.45"));
+    }
+
+    #[test]
+    fn test_invalid_bus_ids() {
+        assert!(!is_valid_bus_id(""));
+        assert!(!is_valid_bus_id("abc"));
+        assert!(!is_valid_bus_id("1-"));
+        assert!(!is_valid_bus_id("-1"));
+        assert!(!is_valid_bus_id("1-1."));
+        assert!(!is_valid_bus_id("1-1..2"));
+        assert!(!is_valid_bus_id("a-1"));
+        assert!(!is_valid_bus_id("1-a"));
+        assert!(!is_valid_bus_id("../etc/passwd"));
+        assert!(!is_valid_bus_id("1-1; rm -rf /"));
     }
 }

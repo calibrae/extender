@@ -193,10 +193,10 @@ impl ClientEngine {
         };
         self.registry.lock().unwrap().insert(port, entry);
 
-        // We need to keep the stream alive (kernel takes ownership of the fd),
-        // so we intentionally leak it. The kernel will close it when the device
-        // is detached.
-        std::mem::forget(reunited);
+        // Transfer fd ownership to the kernel by converting to a raw fd.
+        // The kernel takes ownership and will close it when the device is detached.
+        use std::os::unix::io::IntoRawFd;
+        let _fd = reunited.into_std().unwrap().into_raw_fd();
 
         Ok(AttachedDevice {
             port,
