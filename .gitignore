@@ -1,5 +1,20 @@
-/target
+# Rust
+**/target/
 **/*.rs.bk
+
+# Xcode
+extender-macos/build/
+extender-macos/**/*.xcuserdata/
+extender-macos/**/*.xcworkspace/
+extender-macos/DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+
+# macOS
+.DS_Store
 *.swp
 *.swo
-.DS_Store
