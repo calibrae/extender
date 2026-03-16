@@ -80,9 +80,6 @@ impl Daemon {
             privileges::drop_privileges(user, group)?;
         }
 
-        // Shared API state.
-        let state = Arc::new(api_server::ApiState::new());
-
         // Start USB/IP TCP server.
         let listen_addr = format!(
             "{}:{}",
@@ -102,6 +99,14 @@ impl Daemon {
                 None
             }
         };
+
+        // Share the export registry between the TCP server and API handlers.
+        let registry = server_engine
+            .as_ref()
+            .map(|e| Arc::clone(e.registry()))
+            .unwrap_or_else(|| Arc::new(extender_server::ExportRegistry::new()));
+
+        let state = Arc::new(api_server::ApiState::new(registry));
 
         // Signal handler with config reload on SIGHUP.
         let reload_config = {

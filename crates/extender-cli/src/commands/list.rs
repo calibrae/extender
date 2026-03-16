@@ -15,7 +15,7 @@ const DEFAULT_PORT: u16 = 3240;
 pub async fn run(
     socket_path: &str,
     format: OutputFormat,
-    local: bool,
+    _local: bool,
     remote: Option<&str>,
     port: Option<u16>,
 ) -> Result<(), Box<dyn std::error::Error>> {
