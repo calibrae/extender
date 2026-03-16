@@ -7,8 +7,15 @@ mod output;
 use clap::{Parser, Subcommand};
 use output::OutputFormat;
 
-/// Default daemon socket path.
-const DEFAULT_SOCKET: &str = "/var/run/extender.sock";
+/// Compute the default socket path (same logic as the daemon).
+fn default_socket_path() -> String {
+    if nix::unistd::geteuid().is_root() {
+        "/var/run/extender.sock".to_string()
+    } else {
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        format!("{}/extender.sock", runtime_dir)
+    }
+}
 
 /// Extender — USB/IP device sharing.
 #[derive(Debug, Parser)]
@@ -19,7 +26,7 @@ const DEFAULT_SOCKET: &str = "/var/run/extender.sock";
 )]
 pub struct Cli {
     /// Path to the daemon Unix socket.
-    #[arg(long, global = true, default_value = DEFAULT_SOCKET)]
+    #[arg(long, global = true, default_value_t = default_socket_path())]
     socket: String,
 
     /// Output format.
@@ -357,7 +364,12 @@ mod tests {
     #[test]
     fn test_default_socket_path() {
         let cli = Cli::try_parse_from(["extender", "version"]).unwrap();
-        assert_eq!(cli.socket, "/var/run/extender.sock");
+        // Default depends on whether running as root and XDG_RUNTIME_DIR
+        assert!(
+            cli.socket.ends_with("/extender.sock"),
+            "socket path should end with /extender.sock, got: {}",
+            cli.socket
+        );
     }
 
     #[test]

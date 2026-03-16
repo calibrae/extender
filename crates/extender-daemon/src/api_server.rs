@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use extender_api::{
-    read_message, write_message, ApiResponse, DaemonStatus, DeviceInfo, ExportedDeviceInfo,
-    JsonRpcError, JsonRpcRequest, JsonRpcResponse, UsbSpeed,
+    read_message, write_message, DaemonStatus, DeviceInfo, ExportedDeviceInfo, JsonRpcError,
+    JsonRpcRequest, JsonRpcResponse, UsbSpeed,
 };
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
@@ -185,14 +185,12 @@ async fn dispatch(
 
 fn handle_list_local_devices() -> Result<serde_json::Value, JsonRpcError> {
     let devices: Vec<DeviceInfo> = vec![];
-    let resp = ApiResponse::Devices(devices);
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    serde_json::to_value(&devices).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
 fn handle_list_exported_devices() -> Result<serde_json::Value, JsonRpcError> {
     let devices: Vec<ExportedDeviceInfo> = vec![];
-    let resp = ApiResponse::ExportedDevices(devices);
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    serde_json::to_value(&devices).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
 fn handle_list_remote_devices(
@@ -212,8 +210,7 @@ fn handle_list_remote_devices(
 
     // Stub: return empty list.
     let devices: Vec<DeviceInfo> = vec![];
-    let resp = ApiResponse::Devices(devices);
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    serde_json::to_value(&devices).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
 fn handle_bind_device(
@@ -227,8 +224,7 @@ fn handle_bind_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
-    let resp = ApiResponse::Ok;
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    Ok(serde_json::json!({"status": "ok"}))
 }
 
 fn handle_unbind_device(
@@ -242,8 +238,7 @@ fn handle_unbind_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
-    let resp = ApiResponse::Ok;
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    Ok(serde_json::json!({"status": "ok"}))
 }
 
 fn handle_attach_device(
@@ -265,8 +260,7 @@ fn handle_attach_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
-    let resp = ApiResponse::Ok;
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    Ok(serde_json::json!({"status": "ok"}))
 }
 
 fn handle_detach_device(
@@ -280,8 +274,7 @@ fn handle_detach_device(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'port'"))?;
 
-    let resp = ApiResponse::Ok;
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    Ok(serde_json::json!({"status": "ok"}))
 }
 
 fn handle_get_status(state: &ApiState) -> Result<serde_json::Value, JsonRpcError> {
@@ -292,8 +285,7 @@ fn handle_get_status(state: &ApiState) -> Result<serde_json::Value, JsonRpcError
         imported_devices: 0,
         active_connections: 0,
     };
-    let resp = ApiResponse::Status(status);
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    serde_json::to_value(&status).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
 fn handle_get_device_info(
@@ -318,8 +310,7 @@ fn handle_get_device_info(
         speed: UsbSpeed::Unknown,
         is_bound: false,
     };
-    let resp = ApiResponse::DeviceInfo(device);
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    serde_json::to_value(&device).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
 fn handle_subscribe(
@@ -338,8 +329,7 @@ fn handle_subscribe(
     *event_rx = Some(state.event_tx.subscribe());
     info!("client subscribed to events");
 
-    let resp = ApiResponse::Ok;
-    serde_json::to_value(&resp).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    Ok(serde_json::json!({"status": "ok"}))
 }
 
 #[cfg(test)]

@@ -222,6 +222,7 @@ dependencies = [
  "clap",
  "extender-api",
  "extender-daemon",
+ "nix",
  "serde",
  "serde_json",
  "tokio",

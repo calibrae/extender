@@ -76,9 +76,23 @@ impl Default for ClientConfig {
 
 impl Default for DaemonConfig {
     fn default() -> Self {
+        // Use /var/run when running as root, /tmp otherwise
+        let (socket_path, pid_file) = if nix::unistd::geteuid().is_root() {
+            (
+                "/var/run/extender.sock".to_string(),
+                "/var/run/extender.pid".to_string(),
+            )
+        } else {
+            let runtime_dir =
+                std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+            (
+                format!("{}/extender.sock", runtime_dir),
+                format!("{}/extender.pid", runtime_dir),
+            )
+        };
         Self {
-            socket_path: "/var/run/extender.sock".to_string(),
-            pid_file: "/var/run/extender.pid".to_string(),
+            socket_path,
+            pid_file,
             log_level: "info".to_string(),
             log_format: "text".to_string(),
             drop_user: None,
