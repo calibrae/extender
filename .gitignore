@@ -2,6 +2,9 @@
 **/target/
 **/*.rs.bk
 
+# Swift PM
+**/.build/
+
 # Xcode
 extender-macos/build/
 extender-macos/**/*.xcuserdata/
