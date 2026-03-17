@@ -35,3 +35,4 @@ rustls = "0.23"
 rustls-pemfile = "2"
 rcgen = "0.13"
 mdns-sd = "0.11"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_Security"] }

@@ -321,6 +321,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tracing",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

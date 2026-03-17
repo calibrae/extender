@@ -7,7 +7,8 @@
 //! - Detach a previously imported device
 //! - List currently imported devices
 //!
-//! On non-Linux platforms, attach/detach operations return
+//! On Windows, it uses the usbip-win2 UDE driver via IOCTLs.
+//! On unsupported platforms, attach/detach operations return
 //! `ClientError::PlatformNotSupported`.
 
 pub mod audio;
@@ -25,6 +26,9 @@ pub mod types;
 
 #[cfg(target_os = "linux")]
 pub mod vhci;
+
+#[cfg(target_os = "windows")]
+pub mod vhci_windows;
 
 // Re-export key types for convenience.
 pub use discover::{discover_servers, DiscoveredServer};

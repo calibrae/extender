@@ -25,14 +25,19 @@ struct RegistryEntry {
 /// The client engine manages device import/export operations.
 ///
 /// On Linux, it interfaces with the vhci_hcd kernel module via sysfs.
+/// On Windows, it interfaces with the usbip-win2 UDE driver via IOCTLs.
 /// On other platforms, attach/detach operations return `PlatformNotSupported`.
 pub struct ClientEngine {
     /// VHCI driver instance (Linux only).
     #[cfg(target_os = "linux")]
     vhci: Box<dyn crate::vhci::VirtualHci>,
 
+    /// VHCI driver instance (Windows only).
+    #[cfg(target_os = "windows")]
+    vhci: crate::vhci_windows::WindowsVhciDriver,
+
     /// Registry of imported devices, keyed by port number.
-    #[allow(dead_code)] // Used only on Linux
+    #[allow(dead_code)] // Used only on Linux/Windows
     registry: Mutex<HashMap<u32, RegistryEntry>>,
 }
 
@@ -51,10 +56,22 @@ impl ClientEngine {
         })
     }
 
-    /// Create a new ClientEngine on non-Linux platforms.
+    /// Create a new ClientEngine on Windows.
+    ///
+    /// Opens the usbip-win2 VHCI driver device for attach/detach operations.
+    #[cfg(target_os = "windows")]
+    pub fn new() -> Result<Self, ClientError> {
+        let vhci = crate::vhci_windows::WindowsVhciDriver::new()?;
+        Ok(ClientEngine {
+            vhci,
+            registry: Mutex::new(HashMap::new()),
+        })
+    }
+
+    /// Create a new ClientEngine on unsupported platforms.
     ///
     /// Attach and detach operations will return `PlatformNotSupported`.
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     pub fn new() -> Result<Self, ClientError> {
         Ok(ClientEngine {
             registry: Mutex::new(HashMap::new()),
@@ -85,7 +102,7 @@ impl ClientEngine {
         busid: &str,
     ) -> Result<AttachedDevice, ClientError> {
         // Platform gate
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             let _ = (addr, busid);
             Err(ClientError::PlatformNotSupported)
@@ -94,6 +111,11 @@ impl ClientEngine {
         #[cfg(target_os = "linux")]
         {
             self.attach_device_linux(addr, busid).await
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            self.attach_device_windows(addr, busid).await
         }
     }
 
@@ -208,12 +230,60 @@ impl ClientEngine {
         })
     }
 
+    /// Windows-specific attach implementation.
+    ///
+    /// On Windows, the usbip-win2 driver handles TCP and USB/IP protocol
+    /// entirely in kernel space. We just send an IOCTL with the server
+    /// address and bus ID, and the driver does the rest.
+    #[cfg(target_os = "windows")]
+    async fn attach_device_windows(
+        &self,
+        addr: SocketAddr,
+        busid: &str,
+    ) -> Result<AttachedDevice, ClientError> {
+        let server_ip = addr.ip().to_string();
+        let server_port = addr.port();
+
+        // The driver handles TCP connection and USB/IP protocol in kernel space.
+        // We just send the IOCTL with the server address and bus ID.
+        let port = self.vhci.attach(&server_ip, server_port, busid)?;
+
+        tracing::info!(
+            port = port,
+            busid = busid,
+            server = %addr,
+            "device attached via Windows VHCI"
+        );
+
+        // Record in registry
+        let entry = RegistryEntry {
+            server_addr: addr,
+            busid: busid.to_owned(),
+            // On Windows, we don't get vendor/product info from the attach response.
+            // TODO: Query device info from the driver after attach, or parse it
+            // from a prior device list query.
+            id_vendor: 0,
+            id_product: 0,
+            speed: 0,
+        };
+        self.registry.lock().unwrap().insert(port, entry);
+
+        Ok(AttachedDevice {
+            port,
+            busid: busid.to_owned(),
+            server_addr: addr,
+            id_vendor: 0,
+            id_product: 0,
+            speed: 0,
+        })
+    }
+
     /// Detach a previously imported device by port number.
     ///
     /// Writes to the vhci_hcd detach sysfs file and removes the device
     /// from the local registry.
     pub async fn detach_device(&self, port: u32) -> Result<(), ClientError> {
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             let _ = port;
             Err(ClientError::PlatformNotSupported)
@@ -243,6 +313,18 @@ impl ClientEngine {
             tracing::info!(port = port, "device detached");
             Ok(())
         }
+
+        #[cfg(target_os = "windows")]
+        {
+            // On Windows, the driver handles validation internally.
+            self.vhci.detach(port)?;
+
+            // Remove from registry
+            self.registry.lock().unwrap().remove(&port);
+
+            tracing::info!(port = port, "device detached via Windows VHCI");
+            Ok(())
+        }
     }
 
     /// Get the list of currently imported devices.
@@ -250,7 +332,7 @@ impl ClientEngine {
     /// Parses the vhci_hcd status file and cross-references with the local
     /// registry to provide server address and bus ID information.
     pub fn get_imported_devices(&self) -> Result<Vec<ImportedDevice>, ClientError> {
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             Err(ClientError::PlatformNotSupported)
         }
@@ -278,6 +360,22 @@ impl ClientEngine {
 
             Ok(imported)
         }
+
+        #[cfg(target_os = "windows")]
+        {
+            let mut devices = self.vhci.list_ports()?;
+            let registry = self.registry.lock().unwrap();
+
+            // Enrich with registry data (server address and busid).
+            for dev in &mut devices {
+                if let Some(reg) = registry.get(&dev.port) {
+                    dev.server_addr = Some(reg.server_addr);
+                    dev.busid = Some(reg.busid.clone());
+                }
+            }
+
+            Ok(devices)
+        }
     }
 }
 
@@ -285,28 +383,64 @@ impl ClientEngine {
 mod tests {
     use super::*;
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     #[tokio::test]
-    async fn test_attach_not_supported_on_non_linux() {
+    async fn test_attach_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
         let addr: SocketAddr = "127.0.0.1:3240".parse().unwrap();
         let result = engine.attach_device(addr, "1-1").await;
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     #[tokio::test]
-    async fn test_detach_not_supported_on_non_linux() {
+    async fn test_detach_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
         let result = engine.detach_device(0).await;
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     #[test]
-    fn test_get_imported_not_supported_on_non_linux() {
+    fn test_get_imported_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
         let result = engine.get_imported_devices();
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
+    }
+
+    // Cross-platform tests for Windows IOCTL code calculations.
+    // These verify the CTL_CODE macro logic without requiring Windows.
+
+    /// Compute a buffered IOCTL code for FILE_DEVICE_UNKNOWN (0x22).
+    /// Mirrors the implementation in vhci_windows.rs.
+    const fn ctl_code(function: u32) -> u32 {
+        (0x22 << 16) | (function << 2)
+    }
+
+    #[test]
+    fn test_windows_ioctl_plugin_hardware() {
+        assert_eq!(ctl_code(1), 0x0022_0004);
+    }
+
+    #[test]
+    fn test_windows_ioctl_unplug_hardware() {
+        assert_eq!(ctl_code(2), 0x0022_0008);
+    }
+
+    #[test]
+    fn test_windows_ioctl_get_imported() {
+        assert_eq!(ctl_code(3), 0x0022_000C);
+    }
+
+    #[test]
+    fn test_windows_ctl_code_formula() {
+        // Verify the formula: (device_type << 16) | (function << 2)
+        // with device_type = FILE_DEVICE_UNKNOWN = 0x22
+        for func in 0..16u32 {
+            let code = ctl_code(func);
+            assert_eq!(code >> 16, 0x22, "device type should be 0x22");
+            assert_eq!((code >> 2) & 0xFFF, func, "function number mismatch");
+            assert_eq!(code & 0x3, 0, "METHOD_BUFFERED should be 0");
+        }
     }
 }
