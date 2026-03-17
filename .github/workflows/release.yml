@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-release:
+  # ── macOS (self-hosted ARM runner) ─────────────────────────────────
+  build-macos:
     runs-on: self-hosted
     timeout-minutes: 30
     env:
@@ -23,28 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify toolchain
-        run: |
-          rustc --version
-          cargo --version
-          swift --version | head -1
-
-      # ── Rust CLI binary ──────────────────────────────────────────────
-
-      - name: Build Rust release
+      - name: Build Rust CLI
         working-directory: extender
         run: |
           cargo build --release
           strip target/release/extender
-          ls -lh target/release/extender
 
       - name: Run tests
         working-directory: extender
         run: cargo test --workspace
 
-      # ── macOS app ────────────────────────────────────────────────────
-
-      - name: Build macOS app
+      - name: Build Swift app
         working-directory: extender-macos/ExtenderApp
         run: swift build -c release
 
@@ -52,42 +42,26 @@ jobs:
         run: |
           APP_DIR="build/Extender.app/Contents"
           mkdir -p "$APP_DIR/MacOS" "$APP_DIR/Resources"
-
-          # Copy Swift app binary
           cp extender-macos/ExtenderApp/.build/release/ExtenderApp "$APP_DIR/MacOS/Extender"
-
-          # Embed the Rust daemon binary
           cp extender/target/release/extender "$APP_DIR/MacOS/extender-daemon"
 
-          # Create Info.plist
-          cat > "$APP_DIR/Info.plist" << 'PLIST'
+          VERSION="${GITHUB_REF_NAME#v}"
+          cat > "$APP_DIR/Info.plist" << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>CFBundleExecutable</key>
-            <string>Extender</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.calibrae.extender</string>
-            <key>CFBundleName</key>
-            <string>Extender</string>
-            <key>CFBundleVersion</key>
-            <string>${GITHUB_REF_NAME#v}</string>
-            <key>CFBundleShortVersionString</key>
-            <string>${GITHUB_REF_NAME#v}</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>LSMinimumSystemVersion</key>
-            <string>13.0</string>
-            <key>LSUIElement</key>
-            <true/>
-            <key>NSHumanReadableCopyright</key>
-            <string>Copyright 2026 calibrae. MIT OR Apache-2.0.</string>
+            <key>CFBundleExecutable</key><string>Extender</string>
+            <key>CFBundleIdentifier</key><string>com.calibrae.extender</string>
+            <key>CFBundleName</key><string>Extender</string>
+            <key>CFBundleVersion</key><string>$VERSION</string>
+            <key>CFBundleShortVersionString</key><string>$VERSION</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>LSUIElement</key><true/>
           </dict>
           </plist>
           PLIST
-
-      # ── Code signing ─────────────────────────────────────────────────
 
       - name: Setup signing
         env:
@@ -99,106 +73,67 @@ jobs:
         run: |
           KEYCHAIN_PATH="${RUNNER_TEMP}/build.keychain-db"
           CERT_PATH="${RUNNER_TEMP}/certificate.p12"
-
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
-
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 \
-            -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: \
-            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
+          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
-
           mkdir -p ~/.private_keys
           echo -n "$ASC_KEY_P8" > ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-      - name: Sign CLI binary
+      - name: Sign binaries
         env:
           KEYCHAIN_PASSWORD: ${{ github.run_id }}
         run: |
-          codesign --force \
-            --sign "Developer ID Application" \
+          # Sign CLI binary
+          codesign --force --sign "Developer ID Application" \
             --keychain "${RUNNER_TEMP}/build.keychain-db" \
-            --options runtime \
-            extender/target/release/extender
+            --options runtime extender/target/release/extender
 
-      - name: Sign app bundle
-        env:
-          KEYCHAIN_PASSWORD: ${{ github.run_id }}
-        run: |
-          APP_PATH="build/Extender.app"
-
-          # Sign the embedded daemon binary
-          codesign --force \
-            --sign "Developer ID Application" \
+          # Sign app bundle
+          codesign --force --sign "Developer ID Application" \
             --keychain "${RUNNER_TEMP}/build.keychain-db" \
-            --options runtime \
-            "$APP_PATH/Contents/MacOS/extender-daemon"
+            --options runtime build/Extender.app/Contents/MacOS/extender-daemon
 
-          # Sign the app bundle
-          codesign --force --deep \
-            --sign "Developer ID Application" \
+          codesign --force --deep --sign "Developer ID Application" \
             --keychain "${RUNNER_TEMP}/build.keychain-db" \
-            --options runtime \
-            "$APP_PATH"
+            --options runtime build/Extender.app
 
-          codesign -v "$APP_PATH"
-
-      # ── Package ──────────────────────────────────────────────────────
+          codesign -v build/Extender.app
 
       - name: Create DMG
         run: |
           mkdir -p build/dmg
           cp -R build/Extender.app build/dmg/
           ln -s /Applications build/dmg/Applications
-
-          hdiutil create -volname "Extender" \
-            -srcfolder build/dmg \
-            -ov -format UDZO \
-            "build/Extender-${GITHUB_REF_NAME}.dmg"
+          hdiutil create -volname "Extender" -srcfolder build/dmg \
+            -ov -format UDZO "build/Extender-${GITHUB_REF_NAME}-macOS.dmg"
 
       - name: Create CLI tarball
         run: |
           tar czf "build/extender-${GITHUB_REF_NAME}-aarch64-apple-darwin.tar.gz" \
             -C extender/target/release extender
 
-      - name: Notarize DMG
+      - name: Notarize
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          xcrun notarytool submit "build/Extender-${GITHUB_REF_NAME}.dmg" \
+          xcrun notarytool submit "build/Extender-${GITHUB_REF_NAME}-macOS.dmg" \
             --key ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            --key-id "$ASC_KEY_ID" \
-            --issuer "$ASC_ISSUER_ID" \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" \
             --wait --timeout 10m
+          xcrun stapler staple "build/Extender-${GITHUB_REF_NAME}-macOS.dmg"
 
-          xcrun stapler staple "build/Extender-${GITHUB_REF_NAME}.dmg"
-
-      # ── Checksums and Release ────────────────────────────────────────
-
-      - name: Generate checksums
-        run: |
-          cd build
-          shasum -a 256 \
-            "Extender-${GITHUB_REF_NAME}.dmg" \
-            "extender-${GITHUB_REF_NAME}-aarch64-apple-darwin.tar.gz" \
-            > SHA256SUMS
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Extender $GITHUB_REF_NAME" \
-            --generate-notes \
-            "build/Extender-${GITHUB_REF_NAME}.dmg" \
-            "build/extender-${GITHUB_REF_NAME}-aarch64-apple-darwin.tar.gz" \
-            "build/SHA256SUMS"
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: |
+            build/Extender-${{ github.ref_name }}-macOS.dmg
+            build/extender-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz
 
       - name: Cleanup
         if: always()
@@ -206,3 +141,106 @@ jobs:
           security delete-keychain "${RUNNER_TEMP}/build.keychain-db" 2>/dev/null || true
           rm -f ~/.private_keys/AuthKey_*.p8 "${RUNNER_TEMP}/certificate.p12"
           rm -rf build/
+
+  # ── Linux (GitHub-hosted) ──────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libusb-1.0-0-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        working-directory: extender
+        run: cargo build --release
+
+      - name: Strip binary
+        run: strip extender/target/release/extender
+
+      - name: Run tests
+        working-directory: extender
+        run: cargo test --workspace
+
+      - name: Create tarball
+        run: |
+          tar czf "extender-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz" \
+            -C extender/target/release extender
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: extender-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+
+  # ── Windows (GitHub-hosted) ────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install libusb
+        run: vcpkg install libusb:x64-windows
+
+      - name: Build release
+        working-directory: extender
+        env:
+          VCPKG_ROOT: C:\vcpkg
+        run: cargo build --release
+
+      - name: Run tests
+        working-directory: extender
+        env:
+          VCPKG_ROOT: C:\vcpkg
+        run: cargo test --workspace
+
+      - name: Create zip
+        run: |
+          Compress-Archive -Path extender\target\release\extender.exe `
+            -DestinationPath "extender-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: extender-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip
+
+  # ── Create GitHub Release ──────────────────────────────────────────
+  release:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate checksums
+        run: |
+          find . -type f \( -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" \) -exec sha256sum {} \; > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "Extender ${{ github.ref_name }}" \
+            --generate-notes \
+            macos-release/* \
+            linux-release/* \
+            windows-release/* \
+            SHA256SUMS
