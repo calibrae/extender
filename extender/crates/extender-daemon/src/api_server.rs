@@ -1,4 +1,4 @@
-//! Unix domain socket JSON-RPC API server.
+//! IPC API server (Unix domain socket on Unix, TCP localhost on Windows).
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -10,6 +10,9 @@ use extender_api::{
     JsonRpcRequest, JsonRpcResponse, UsbSpeed,
 };
 use extender_server::export::ExportRegistry;
+#[cfg(windows)]
+use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -35,7 +38,22 @@ impl ApiState {
     }
 }
 
+/// Default TCP port used for the IPC transport on Windows.
+#[cfg(windows)]
+const DEFAULT_API_PORT: u16 = 9241;
+
+/// Parse the API address from the socket_path configuration value.
+///
+/// On Unix this is a filesystem path for the Unix domain socket.
+/// On Windows this is interpreted as a TCP port number (falling back to the
+/// default port when parsing fails) and the server binds to `127.0.0.1`.
+#[cfg(windows)]
+fn parse_api_port(socket_path: &str) -> u16 {
+    socket_path.parse::<u16>().unwrap_or(DEFAULT_API_PORT)
+}
+
 /// Start the API server on a Unix domain socket.
+#[cfg(unix)]
 pub async fn run_api_server(
     socket_path: &str,
     shutdown: CancellationToken,
@@ -47,7 +65,6 @@ pub async fn run_api_server(
 
     let listener = UnixListener::bind(socket_path)?;
 
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o660);
@@ -85,6 +102,48 @@ pub async fn run_api_server(
     Ok(())
 }
 
+/// Start the API server on a TCP socket bound to localhost (Windows).
+#[cfg(windows)]
+pub async fn run_api_server(
+    socket_path: &str,
+    shutdown: CancellationToken,
+    state: Arc<ApiState>,
+) -> std::io::Result<()> {
+    let port = parse_api_port(socket_path);
+    let addr = format!("127.0.0.1:{}", port);
+    let listener = TcpListener::bind(&addr).await?;
+
+    info!("API server listening on {}", addr);
+
+    loop {
+        tokio::select! {
+            accept_result = listener.accept() => {
+                match accept_result {
+                    Ok((stream, _addr)) => {
+                        let state = Arc::clone(&state);
+                        let shutdown = shutdown.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = handle_client(stream, state, shutdown).await {
+                                debug!("client connection ended: {}", e);
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        error!("failed to accept connection: {}", e);
+                    }
+                }
+            }
+            _ = shutdown.cancelled() => {
+                info!("API server shutting down");
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
 #[instrument(skip_all)]
 async fn handle_client(
     stream: UnixStream,
@@ -92,6 +151,27 @@ async fn handle_client(
     shutdown: CancellationToken,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut reader, mut writer) = stream.into_split();
+    handle_client_io(&mut reader, &mut writer, state, shutdown).await
+}
+
+#[cfg(windows)]
+#[instrument(skip_all)]
+async fn handle_client(
+    stream: TcpStream,
+    state: Arc<ApiState>,
+    shutdown: CancellationToken,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (mut reader, mut writer) = stream.into_split();
+    handle_client_io(&mut reader, &mut writer, state, shutdown).await
+}
+
+#[instrument(skip_all)]
+async fn handle_client_io(
+    mut reader: &mut (impl tokio::io::AsyncRead + Unpin),
+    mut writer: &mut (impl tokio::io::AsyncWrite + Unpin),
+    state: Arc<ApiState>,
+    shutdown: CancellationToken,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut event_rx: Option<broadcast::Receiver<String>> = None;
 
     loop {
@@ -481,6 +561,7 @@ fn speed_to_api(speed: u32) -> UsbSpeed {
 }
 
 #[cfg(test)]
+#[cfg(unix)]
 mod tests {
     use super::*;
     use extender_api::{read_message, write_message, JsonRpcRequest};

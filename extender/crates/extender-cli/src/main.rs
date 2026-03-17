@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 use output::OutputFormat;
 
 /// Compute the default socket path (same logic as the daemon).
+#[cfg(unix)]
 fn default_socket_path() -> String {
     if nix::unistd::geteuid().is_root() {
         "/var/run/extender.sock".to_string()
@@ -15,6 +16,12 @@ fn default_socket_path() -> String {
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
         format!("{}/extender.sock", runtime_dir)
     }
+}
+
+/// On Windows the daemon uses a TCP port for IPC instead of a Unix socket.
+#[cfg(windows)]
+fn default_socket_path() -> String {
+    "9241".to_string()
 }
 
 /// Extender — USB/IP device sharing.
@@ -465,12 +472,19 @@ mod tests {
     #[test]
     fn test_default_socket_path() {
         let cli = Cli::try_parse_from(["extender", "version"]).unwrap();
-        // Default depends on whether running as root and XDG_RUNTIME_DIR
-        assert!(
-            cli.socket.ends_with("/extender.sock"),
-            "socket path should end with /extender.sock, got: {}",
-            cli.socket
-        );
+        #[cfg(unix)]
+        {
+            // Default depends on whether running as root and XDG_RUNTIME_DIR
+            assert!(
+                cli.socket.ends_with("/extender.sock"),
+                "socket path should end with /extender.sock, got: {}",
+                cli.socket
+            );
+        }
+        #[cfg(windows)]
+        {
+            assert_eq!(cli.socket, "9241", "socket should be TCP port on Windows");
+        }
     }
 
     #[test]

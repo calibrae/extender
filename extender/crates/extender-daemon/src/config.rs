@@ -131,22 +131,35 @@ impl Default for ClientConfig {
     }
 }
 
+/// Compute default daemon socket and PID file paths for Unix.
+#[cfg(unix)]
+fn default_daemon_paths() -> (String, String) {
+    if nix::unistd::geteuid().is_root() {
+        (
+            "/var/run/extender.sock".to_string(),
+            "/var/run/extender.pid".to_string(),
+        )
+    } else {
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+        (
+            format!("{}/extender.sock", runtime_dir),
+            format!("{}/extender.pid", runtime_dir),
+        )
+    }
+}
+
+/// Compute default daemon socket (TCP port) and PID file paths for Windows.
+#[cfg(windows)]
+fn default_daemon_paths() -> (String, String) {
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| "C:\\Users\\Public".to_string());
+    let socket_path = "9241".to_string(); // TCP port on Windows
+    let pid_file = format!("{}\\Extender\\extender.pid", appdata);
+    (socket_path, pid_file)
+}
+
 impl Default for DaemonConfig {
     fn default() -> Self {
-        // Use /var/run when running as root, /tmp otherwise
-        let (socket_path, pid_file) = if nix::unistd::geteuid().is_root() {
-            (
-                "/var/run/extender.sock".to_string(),
-                "/var/run/extender.pid".to_string(),
-            )
-        } else {
-            let runtime_dir =
-                std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-            (
-                format!("{}/extender.sock", runtime_dir),
-                format!("{}/extender.pid", runtime_dir),
-            )
-        };
+        let (socket_path, pid_file) = default_daemon_paths();
         Self {
             socket_path,
             pid_file,

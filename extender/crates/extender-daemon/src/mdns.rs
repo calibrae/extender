@@ -15,10 +15,17 @@ pub const SERVICE_TYPE: &str = "_usbip._tcp";
 
 /// Returns the local hostname, falling back to `"extender"`.
 fn get_hostname() -> String {
-    nix::unistd::gethostname()
-        .ok()
-        .and_then(|h| h.into_string().ok())
-        .unwrap_or_else(|| "extender".to_string())
+    #[cfg(unix)]
+    {
+        nix::unistd::gethostname()
+            .ok()
+            .and_then(|h| h.into_string().ok())
+            .unwrap_or_else(|| "extender".to_string())
+    }
+    #[cfg(windows)]
+    {
+        std::env::var("COMPUTERNAME").unwrap_or_else(|_| "extender".to_string())
+    }
 }
 
 /// Handles mDNS service registration and deregistration.

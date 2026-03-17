@@ -1,10 +1,17 @@
-//! Unix socket API client for communicating with the Extender daemon.
+//! API client for communicating with the Extender daemon.
+//!
+//! On Unix, connects via a Unix domain socket. On Windows, connects via TCP to
+//! localhost on the port specified by the socket_path string.
 
+#[cfg(unix)]
 use std::path::Path;
 
 use extender_api::{
     read_message, write_message, ApiMethod, JsonRpcError, JsonRpcRequest, JsonRpcResponse,
 };
+#[cfg(windows)]
+use tokio::net::TcpStream;
+#[cfg(unix)]
 use tokio::net::UnixStream;
 
 /// Error type for daemon client operations.
@@ -45,9 +52,22 @@ impl std::fmt::Display for ClientError {
 impl std::error::Error for ClientError {}
 
 /// Connect to the daemon's Unix socket at the given path.
+#[cfg(unix)]
 pub async fn connect_to_daemon(socket_path: &str) -> Result<UnixStream, ClientError> {
     let path = Path::new(socket_path);
     UnixStream::connect(path)
+        .await
+        .map_err(ClientError::ConnectionFailed)
+}
+
+/// Connect to the daemon via TCP on localhost (Windows).
+///
+/// `socket_path` is interpreted as a port number (defaulting to 9241).
+#[cfg(windows)]
+pub async fn connect_to_daemon(socket_path: &str) -> Result<TcpStream, ClientError> {
+    let port: u16 = socket_path.parse().unwrap_or(9241);
+    let addr = format!("127.0.0.1:{}", port);
+    TcpStream::connect(&addr)
         .await
         .map_err(ClientError::ConnectionFailed)
 }
