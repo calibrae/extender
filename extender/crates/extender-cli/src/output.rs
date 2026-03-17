@@ -5,17 +5,12 @@ use extender_api::types::{
 };
 
 /// Output format selected by the user.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormat {
+    #[default]
     Human,
     Json,
     Quiet,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Human
-    }
 }
 
 // ---------------------------------------------------------------------------
