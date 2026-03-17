@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>extender.ico</ApplicationIcon>
+    <!-- <ApplicationIcon>extender.ico</ApplicationIcon> -->
     <AssemblyName>ExtenderTray</AssemblyName>
     <RootNamespace>ExtenderTray</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
