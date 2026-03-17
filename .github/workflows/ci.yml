@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-check:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    env:
+      PATH: /opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify toolchain
+        run: |
+          echo "Rust: $(rustc --version)"
+          echo "Cargo: $(cargo --version)"
+          echo "Swift: $(swift --version | head -1)"
+          echo "libusb: $(pkg-config --modversion libusb-1.0)"
+
+      - name: Format check
+        working-directory: extender
+        run: cargo fmt --check
+
+      - name: Clippy
+        working-directory: extender
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        working-directory: extender
+        run: cargo test --workspace
+
+      - name: Build release
+        working-directory: extender
+        run: cargo build --release
+
+  swift-check:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    env:
+      PATH: /opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build macOS app
+        working-directory: extender-macos/ExtenderApp
+        run: swift build
+
+  cargo-audit:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    env:
+      PATH: /opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --quiet 2>/dev/null || true
+
+      - name: Audit dependencies
+        working-directory: extender
+        run: cargo audit

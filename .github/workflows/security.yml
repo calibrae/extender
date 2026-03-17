@@ -1,0 +1,61 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Every Monday at 8 AM
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    env:
+      PATH: /opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust dependency audit
+        working-directory: extender
+        run: |
+          cargo install cargo-audit --quiet 2>/dev/null || true
+          cargo audit
+
+      - name: Check for unsafe code
+        working-directory: extender
+        run: |
+          echo "=== Unsafe Code Check ==="
+          UNSAFE=$(grep -rn "unsafe" crates/*/src/*.rs crates/*/src/**/*.rs 2>/dev/null | grep -v "// " | grep -v "test" || true)
+          if [ -n "$UNSAFE" ]; then
+            echo "WARNING: Unsafe code found:"
+            echo "$UNSAFE"
+          else
+            echo "PASS: No unsafe code"
+          fi
+
+      - name: Check for hardcoded credentials
+        run: |
+          echo "=== Credential Check ==="
+          CREDS=$(grep -rni "password\s*=\s*\"[^\"]\+\"\|secret\s*=\s*\"[^\"]\+\"" \
+            extender/crates/ extender-macos/ extender-windows/ \
+            --include="*.rs" --include="*.swift" --include="*.cs" \
+            | grep -v "test\|example\|placeholder\|TODO" || true)
+          if [ -n "$CREDS" ]; then
+            echo "WARNING: Possible hardcoded credentials:"
+            echo "$CREDS"
+          else
+            echo "PASS: No hardcoded credentials"
+          fi
+
+      - name: Check dependency versions
+        run: |
+          echo "=== System Dependencies ==="
+          echo "libusb: $(pkg-config --modversion libusb-1.0 2>/dev/null || echo 'NOT FOUND')"
+          echo ""
+          echo "=== Homebrew Outdated ==="
+          brew outdated libusb 2>/dev/null || true
+
+      - name: Build verification
+        working-directory: extender
+        run: cargo build --release
