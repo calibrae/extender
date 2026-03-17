@@ -49,6 +49,25 @@ impl ServerEngine {
         })
     }
 
+    /// Create a new server engine with a custom session timeout (plain TCP).
+    pub async fn new_with_session_timeout(
+        addr: SocketAddr,
+        session_timeout_secs: u64,
+    ) -> Result<Self, ServerError> {
+        let listener = TcpListener::bind(addr)
+            .await
+            .map_err(ServerError::ListenerBind)?;
+
+        let local_addr = listener.local_addr().map_err(ServerError::ListenerBind)?;
+        tracing::info!(%local_addr, session_timeout_secs, "server engine bound (plain TCP, custom session timeout)");
+
+        Ok(ServerEngine {
+            listener,
+            registry: Arc::new(ExportRegistry::with_session_timeout(session_timeout_secs)),
+            tls_acceptor: None,
+        })
+    }
+
     /// Create a new server engine bound to the given address with TLS enabled.
     ///
     /// All accepted connections are wrapped with TLS. Plain TCP connections
@@ -69,6 +88,28 @@ impl ServerEngine {
         Ok(ServerEngine {
             listener,
             registry: Arc::new(ExportRegistry::new()),
+            tls_acceptor: Some(acceptor),
+        })
+    }
+
+    /// Create a new server engine with TLS and a custom session timeout.
+    pub async fn new_tls_with_session_timeout(
+        addr: SocketAddr,
+        tls_config: &TlsServerConfig,
+        session_timeout_secs: u64,
+    ) -> Result<Self, ServerError> {
+        let acceptor = tls_config.build_acceptor()?;
+
+        let listener = TcpListener::bind(addr)
+            .await
+            .map_err(ServerError::ListenerBind)?;
+
+        let local_addr = listener.local_addr().map_err(ServerError::ListenerBind)?;
+        tracing::info!(%local_addr, session_timeout_secs, "server engine bound (TLS, custom session timeout)");
+
+        Ok(ServerEngine {
+            listener,
+            registry: Arc::new(ExportRegistry::with_session_timeout(session_timeout_secs)),
             tls_acceptor: Some(acceptor),
         })
     }

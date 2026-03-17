@@ -89,6 +89,14 @@ pub enum Command {
         /// Remote server USB/IP port (default: 3240).
         #[arg(short, long)]
         port: Option<u16>,
+
+        /// Enable auto-reconnection on connection drop (default: on).
+        #[arg(long, default_value_t = true, action = clap::ArgAction::SetTrue)]
+        reconnect: bool,
+
+        /// Disable auto-reconnection.
+        #[arg(long, conflicts_with = "reconnect")]
+        no_reconnect: bool,
     },
 
     /// Detach an imported USB device.
@@ -193,7 +201,20 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             remote,
             busid,
             port,
-        } => commands::attach::run_attach(&cli.socket, cli.format, &remote, &busid, port).await,
+            reconnect,
+            no_reconnect,
+        } => {
+            let auto_reconnect = reconnect && !no_reconnect;
+            commands::attach::run_attach(
+                &cli.socket,
+                cli.format,
+                &remote,
+                &busid,
+                port,
+                auto_reconnect,
+            )
+            .await
+        }
 
         Command::Detach { port } => {
             commands::attach::run_detach(&cli.socket, cli.format, port).await
@@ -307,10 +328,14 @@ mod tests {
                 remote,
                 busid,
                 port,
+                reconnect,
+                no_reconnect,
             } => {
                 assert_eq!(remote, "10.0.0.1");
                 assert_eq!(busid, "1-2");
                 assert!(port.is_none());
+                assert!(reconnect);
+                assert!(!no_reconnect);
             }
             _ => panic!("expected Attach command"),
         }
@@ -324,6 +349,26 @@ mod tests {
         .unwrap();
         match cli.command {
             Command::Attach { port, .. } => assert_eq!(port, Some(4000)),
+            _ => panic!("expected Attach command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_attach_no_reconnect() {
+        let cli = Cli::try_parse_from([
+            "extender",
+            "attach",
+            "-r",
+            "10.0.0.1",
+            "-b",
+            "1-2",
+            "--no-reconnect",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Attach { no_reconnect, .. } => {
+                assert!(no_reconnect);
+            }
             _ => panic!("expected Attach command"),
         }
     }

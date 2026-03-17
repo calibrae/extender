@@ -15,6 +15,7 @@ pub async fn run_attach(
     host: &str,
     bus_id: &str,
     port: Option<u16>,
+    auto_reconnect: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let port = port.unwrap_or(DEFAULT_PORT);
     client::call_daemon(
@@ -26,7 +27,15 @@ pub async fn run_attach(
         },
     )
     .await?;
-    output::print_ok(&format!("Attached {bus_id} from {host}:{port}."), format);
+    let reconnect_msg = if auto_reconnect {
+        " (auto-reconnect enabled)"
+    } else {
+        ""
+    };
+    output::print_ok(
+        &format!("Attached {bus_id} from {host}:{port}.{reconnect_msg}"),
+        format,
+    );
     Ok(())
 }
 

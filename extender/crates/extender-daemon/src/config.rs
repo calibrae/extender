@@ -27,6 +27,10 @@ pub struct ServerConfig {
     pub tls_cert: Option<String>,
     /// Path to PEM private key file for TLS.
     pub tls_key: Option<String>,
+    /// Grace period in seconds for disconnected sessions before the device
+    /// is released. During this window a reconnecting client can resume
+    /// its session without re-binding. Default: 30.
+    pub session_timeout_secs: u64,
 }
 
 /// Client-side settings.
@@ -34,6 +38,14 @@ pub struct ServerConfig {
 #[serde(default)]
 pub struct ClientConfig {
     pub vhci_path: String,
+    /// Enable automatic reconnection when a connection drops.
+    pub auto_reconnect: bool,
+    /// Maximum number of reconnection attempts. 0 = unlimited.
+    pub reconnect_max_retries: u32,
+    /// Initial delay between reconnection attempts, in seconds.
+    pub reconnect_delay_secs: u64,
+    /// Maximum delay between reconnection attempts, in seconds.
+    pub reconnect_max_delay_secs: u64,
 }
 
 /// Daemon process settings.
@@ -102,6 +114,7 @@ impl Default for ServerConfig {
             max_connections: 16,
             tls_cert: None,
             tls_key: None,
+            session_timeout_secs: 30,
         }
     }
 }
@@ -110,6 +123,10 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             vhci_path: "/sys/devices/platform/vhci_hcd.0".to_string(),
+            auto_reconnect: true,
+            reconnect_max_retries: 0,
+            reconnect_delay_secs: 1,
+            reconnect_max_delay_secs: 30,
         }
     }
 }
@@ -251,6 +268,18 @@ impl Config {
         if let Ok(val) = std::env::var("EXTENDER_TLS_CA") {
             debug!("EXTENDER_TLS_CA override: {}", val);
             self.tls.ca = Some(val);
+        }
+        if let Ok(val) = std::env::var("EXTENDER_SESSION_TIMEOUT") {
+            if let Ok(secs) = val.parse::<u64>() {
+                debug!("EXTENDER_SESSION_TIMEOUT override: {}", secs);
+                self.server.session_timeout_secs = secs;
+            } else {
+                warn!("EXTENDER_SESSION_TIMEOUT is not a valid u64: {}", val);
+            }
+        }
+        if let Ok(val) = std::env::var("EXTENDER_AUTO_RECONNECT") {
+            debug!("EXTENDER_AUTO_RECONNECT override: {}", val);
+            self.client.auto_reconnect = val == "1" || val.eq_ignore_ascii_case("true");
         }
     }
 }

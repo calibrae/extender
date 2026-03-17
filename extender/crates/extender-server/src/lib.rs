@@ -30,9 +30,11 @@ pub mod transfer;
 pub use device::{enumerate_devices, filter_devices, DeviceFilter, LocalUsbDevice};
 pub use engine::ServerEngine;
 pub use error::ServerError;
-pub use export::{ExportRegistry, ExportedDevice, SessionId};
+pub use export::{
+    ExportRegistry, ExportedDevice, SessionId, SessionState, DEFAULT_SESSION_TIMEOUT_SECS,
+};
 pub use handle::ManagedDevice;
-pub use session::DeviceSession;
+pub use session::{DeviceSession, SessionHealth};
 pub use tls::TlsServerConfig;
 pub use transfer::{
     execute_bulk_transfer, execute_control_transfer, execute_interrupt_transfer, TransferResult,

@@ -108,13 +108,21 @@ impl Daemon {
             }
         };
 
+        let session_timeout_secs = self.config.server.session_timeout_secs;
         let server_engine = if let Some(ref tls_cfg) = tls_config {
-            match extender_server::ServerEngine::new_tls(parsed_addr, tls_cfg).await {
+            match extender_server::ServerEngine::new_tls_with_session_timeout(
+                parsed_addr,
+                tls_cfg,
+                session_timeout_secs,
+            )
+            .await
+            {
                 Ok(engine) => {
                     info!(
                         listen = %self.config.server.listen_address,
                         port = self.config.server.port,
                         tls = true,
+                        session_timeout_secs,
                         "USB/IP server listening (TLS)"
                     );
                     Some(engine)
@@ -125,11 +133,17 @@ impl Daemon {
                 }
             }
         } else {
-            match extender_server::ServerEngine::new(parsed_addr).await {
+            match extender_server::ServerEngine::new_with_session_timeout(
+                parsed_addr,
+                session_timeout_secs,
+            )
+            .await
+            {
                 Ok(engine) => {
                     info!(
                         listen = %self.config.server.listen_address,
                         port = self.config.server.port,
+                        session_timeout_secs,
                         "USB/IP server listening"
                     );
                     Some(engine)
@@ -145,7 +159,11 @@ impl Daemon {
         let registry = server_engine
             .as_ref()
             .map(|e| Arc::clone(e.registry()))
-            .unwrap_or_else(|| Arc::new(extender_server::ExportRegistry::new()));
+            .unwrap_or_else(|| {
+                Arc::new(extender_server::ExportRegistry::with_session_timeout(
+                    self.config.server.session_timeout_secs,
+                ))
+            });
 
         let state = Arc::new(api_server::ApiState::new(
             registry.clone(),

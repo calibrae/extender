@@ -68,17 +68,21 @@ pub async fn handle_connection<S>(
             }
             tracing::debug!(%peer, bus_id, "handling IMPORT request");
             match handle_import(&mut stream, &registry, &bus_id).await {
-                Ok(Some((handle, session_id))) => {
+                Ok(Some((handle, session_id, is_reconnect))) => {
                     // Successfully imported -- enter URB forwarding loop.
-                    tracing::info!(%peer, bus_id, session_id, "entering URB forwarding loop");
+                    if is_reconnect {
+                        tracing::info!(%peer, bus_id, session_id, "client reconnected, resuming session");
+                    } else {
+                        tracing::info!(%peer, bus_id, session_id, "new client connected, entering URB forwarding loop");
+                    }
                     let (reader, writer) = tokio::io::split(stream);
                     let session = DeviceSession::new(reader, writer, handle, bus_id.to_string());
                     if let Err(e) = session.run().await {
                         tracing::warn!(%peer, bus_id, "URB session error: {}", e);
                     }
-                    // Release the device when the session ends.
+                    // Release the device when the session ends (enters grace period).
                     registry.release(&bus_id, session_id).await;
-                    tracing::info!(%peer, bus_id, session_id, "session ended, device released");
+                    tracing::info!(%peer, bus_id, session_id, "session ended, device entering grace period");
                 }
                 Ok(None) => {
                     // Import was rejected; connection closes.
@@ -114,16 +118,24 @@ async fn handle_devlist<S: AsyncRead + AsyncWrite + Unpin>(
 
 /// Handle an OP_REQ_IMPORT: try to acquire the device from the registry.
 ///
-/// Returns `Ok(Some((handle, session_id)))` if the import succeeded and the
-/// connection should continue into the URB phase. Returns `Ok(None)` if the
-/// import was rejected (error reply sent to client). Returns `Err` on I/O errors.
+/// Returns `Ok(Some((handle, session_id, is_reconnect)))` if the import
+/// succeeded and the connection should continue into the URB phase. Returns
+/// `Ok(None)` if the import was rejected (error reply sent to client).
+/// Returns `Err` on I/O errors.
 async fn handle_import<S: AsyncRead + AsyncWrite + Unpin>(
     stream: &mut S,
     registry: &ExportRegistry,
     bus_id: &str,
-) -> Result<Option<(Arc<crate::handle::ManagedDevice>, crate::export::SessionId)>, ServerError> {
-    match registry.try_acquire(bus_id).await {
-        Ok((handle, proto_device, session_id)) => {
+) -> Result<
+    Option<(
+        Arc<crate::handle::ManagedDevice>,
+        crate::export::SessionId,
+        bool,
+    )>,
+    ServerError,
+> {
+    match registry.try_acquire_ext(bus_id).await {
+        Ok((handle, proto_device, session_id, is_reconnect)) => {
             let reply = OpMessage::RepImport(Box::new(OpRepImport {
                 status: 0,
                 device: Some(proto_device),
@@ -131,7 +143,7 @@ async fn handle_import<S: AsyncRead + AsyncWrite + Unpin>(
             write_op_message(stream, &reply)
                 .await
                 .map_err(ServerError::Protocol)?;
-            Ok(Some((handle, session_id)))
+            Ok(Some((handle, session_id, is_reconnect)))
         }
         Err(_) => {
             // Device not found, not bound, or already in use.

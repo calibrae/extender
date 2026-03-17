@@ -27,6 +27,45 @@ const TRANSFER_TIMEOUT: Duration = Duration::from_secs(5);
 /// Channel capacity for response messages.
 const RESPONSE_CHANNEL_SIZE: usize = 64;
 
+/// Thread-safe tracker for the last successful URB timestamp.
+///
+/// Updated each time a URB response is successfully sent. Can be used by
+/// external monitoring to detect stale sessions.
+#[derive(Debug, Clone)]
+pub struct SessionHealth {
+    last_urb_at: Arc<Mutex<Option<tokio::time::Instant>>>,
+}
+
+impl SessionHealth {
+    /// Create a new health tracker.
+    pub fn new() -> Self {
+        SessionHealth {
+            last_urb_at: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Record a successful URB response.
+    pub async fn record_urb(&self) {
+        *self.last_urb_at.lock().await = Some(tokio::time::Instant::now());
+    }
+
+    /// Get the last successful URB timestamp.
+    pub async fn last_urb_time(&self) -> Option<tokio::time::Instant> {
+        *self.last_urb_at.lock().await
+    }
+
+    /// Check how long since the last URB activity.
+    pub async fn idle_duration(&self) -> Option<Duration> {
+        self.last_urb_at.lock().await.map(|t| t.elapsed())
+    }
+}
+
+impl Default for SessionHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Manages the URB forwarding loop for one imported device.
 pub struct DeviceSession<R, W> {
     reader: R,
@@ -34,6 +73,7 @@ pub struct DeviceSession<R, W> {
     handle: Arc<ManagedDevice>,
     in_flight: Arc<Mutex<HashMap<u32, JoinHandle<()>>>>,
     bus_id: String,
+    health: SessionHealth,
 }
 
 impl<R, W> DeviceSession<R, W>
@@ -49,7 +89,13 @@ where
             handle,
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             bus_id,
+            health: SessionHealth::new(),
         }
+    }
+
+    /// Get a reference to the session health tracker.
+    pub fn health(&self) -> &SessionHealth {
+        &self.health
     }
 
     /// Run the URB forwarding loop.
@@ -64,17 +110,20 @@ where
         let handle = self.handle;
         let in_flight = self.in_flight;
         let bus_id = self.bus_id;
+        let health = self.health;
 
         // Channel for responses from transfer tasks → writer task.
         let (tx, mut rx) = mpsc::channel::<UrbMessage>(RESPONSE_CHANNEL_SIZE);
 
         // Writer task: drains the channel and writes to the TCP stream.
+        let writer_health = health.clone();
         let writer_handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 if let Err(e) = write_urb_message(&mut writer, &msg).await {
                     tracing::error!("failed to write URB response: {}", e);
                     break;
                 }
+                writer_health.record_urb().await;
             }
         });
 

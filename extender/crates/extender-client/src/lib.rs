@@ -13,6 +13,7 @@
 pub mod discover;
 pub mod engine;
 pub mod error;
+pub mod reconnect;
 pub mod remote;
 pub mod tls;
 pub mod types;
@@ -24,6 +25,7 @@ pub mod vhci;
 pub use discover::{discover_servers, DiscoveredServer};
 pub use engine::ClientEngine;
 pub use error::ClientError;
+pub use reconnect::{attach_with_reconnect, ReconnectPolicy};
 pub use remote::list_remote_devices;
 pub use tls::TlsClientConfig;
 pub use types::{AttachedDevice, ImportedDevice, PortStatus, RemoteDevice, VhciPort};
