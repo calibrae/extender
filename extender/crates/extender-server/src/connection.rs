@@ -66,7 +66,8 @@ pub async fn handle_connection(
                 Ok(Some((handle, session_id))) => {
                     // Successfully imported -- enter URB forwarding loop.
                     tracing::info!(%peer, bus_id, session_id, "entering URB forwarding loop");
-                    let session = DeviceSession::new(stream, handle, bus_id.to_string());
+                    let (reader, writer) = tokio::io::split(stream);
+                    let session = DeviceSession::new(reader, writer, handle, bus_id.to_string());
                     if let Err(e) = session.run().await {
                         tracing::warn!(%peer, bus_id, "URB session error: {}", e);
                     }
