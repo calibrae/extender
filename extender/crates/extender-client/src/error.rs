@@ -62,4 +62,20 @@ pub enum ClientError {
     /// A USB Mass Storage protocol error.
     #[error("mass storage error: {0}")]
     MassStorage(String),
+
+    /// A USB HID protocol error.
+    #[error("HID error: {0}")]
+    Hid(String),
+
+    /// A USB CDC/ACM serial protocol error.
+    #[error("serial error: {0}")]
+    Serial(String),
+
+    /// A USB CDC-ECM/NCM network protocol error.
+    #[error("network error: {0}")]
+    Network(String),
+
+    /// A USB Audio Class protocol error.
+    #[error("audio error: {0}")]
+    Audio(String),
 }

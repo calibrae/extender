@@ -10,12 +10,16 @@
 //! On non-Linux platforms, attach/detach operations return
 //! `ClientError::PlatformNotSupported`.
 
+pub mod audio;
 pub mod discover;
 pub mod engine;
 pub mod error;
+pub mod hid;
 pub mod mass_storage;
+pub mod network;
 pub mod reconnect;
 pub mod remote;
+pub mod serial;
 pub mod tls;
 pub mod types;
 

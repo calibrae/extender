@@ -40,4 +40,8 @@ pub enum ProtocolError {
     /// Device count exceeds the maximum allowed in a DEVLIST reply.
     #[error("too many devices in DEVLIST: {count} (max {max})")]
     TooManyDevices { count: u32, max: u32 },
+
+    /// Too many ISO packet descriptors.
+    #[error("too many ISO packets: {count} (max {max})")]
+    TooManyIsoPackets { count: u32, max: u32 },
 }

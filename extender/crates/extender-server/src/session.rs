@@ -284,6 +284,7 @@ async fn handle_submit(cmd: CmdSubmit, handle: &Arc<ManagedDevice>, bus_id: &str
         number_of_packets: 0xFFFF_FFFF,
         error_count: 0,
         transfer_buffer,
+        iso_packet_descriptors: vec![],
     })
 }
 

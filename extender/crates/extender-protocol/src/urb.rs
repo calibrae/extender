@@ -34,6 +34,15 @@ pub const MAX_TRANSFER_BUFFER_LENGTH: u32 = 1_048_576;
 /// Maximum number of devices in a DEVLIST reply.
 pub const MAX_DEVICES_IN_DEVLIST: u32 = 256;
 
+/// Maximum number of ISO packet descriptors allowed.
+pub const MAX_ISO_PACKETS: u32 = 1024;
+
+/// Size of a single ISO packet descriptor on the wire (16 bytes).
+pub const ISO_PACKET_DESCRIPTOR_SIZE: usize = 16;
+
+/// Sentinel value for number_of_packets indicating a non-ISO transfer.
+pub const NON_ISO_PACKETS_SENTINEL: u32 = 0xFFFF_FFFF;
+
 /// Total header size for all URB messages (basic + specific = 48 bytes).
 pub const URB_HEADER_TOTAL_SIZE: usize = 48;
 
@@ -90,6 +99,65 @@ impl WireFormat for UsbipHeaderBasic {
     }
 }
 
+// ── ISO Packet Descriptor ───────────────────────────────────────────
+
+/// ISO packet descriptor (16 bytes per packet in USB/IP protocol).
+///
+/// For isochronous transfers, `number_of_packets` of these follow
+/// the transfer buffer in both CmdSubmit and RetSubmit messages.
+///
+/// | Offset | Length | Field         |
+/// |--------|--------|---------------|
+/// | 0      | 4      | offset        |
+/// | 4      | 4      | length        |
+/// | 8      | 4      | actual_length |
+/// | 12     | 4      | status        |
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IsoPacketDescriptor {
+    /// Offset into the transfer buffer for this packet.
+    pub offset: u32,
+    /// Expected length for this packet.
+    pub length: u32,
+    /// Actual bytes transferred (meaningful in RetSubmit).
+    pub actual_length: u32,
+    /// Per-packet status (meaningful in RetSubmit).
+    pub status: u32,
+}
+
+impl WireFormat for IsoPacketDescriptor {
+    fn encode(&self, buf: &mut impl BufMut) {
+        buf.put_u32(self.offset);
+        buf.put_u32(self.length);
+        buf.put_u32(self.actual_length);
+        buf.put_u32(self.status);
+    }
+
+    fn decode(buf: &mut impl Buf) -> Result<Self, ProtocolError> {
+        if buf.remaining() < ISO_PACKET_DESCRIPTOR_SIZE {
+            return Err(ProtocolError::BufferTooShort {
+                needed: ISO_PACKET_DESCRIPTOR_SIZE,
+                available: buf.remaining(),
+            });
+        }
+        Ok(IsoPacketDescriptor {
+            offset: buf.get_u32(),
+            length: buf.get_u32(),
+            actual_length: buf.get_u32(),
+            status: buf.get_u32(),
+        })
+    }
+
+    fn wire_size(&self) -> usize {
+        ISO_PACKET_DESCRIPTOR_SIZE
+    }
+}
+
+/// Helper: returns true if the number_of_packets value indicates an ISO transfer.
+#[inline]
+pub fn is_iso_transfer(number_of_packets: u32) -> bool {
+    number_of_packets != NON_ISO_PACKETS_SENTINEL
+}
+
 // ── CMD_SUBMIT ──────────────────────────────────────────────────────
 
 /// Submit a USB request block.
@@ -118,6 +186,8 @@ pub struct CmdSubmit {
     pub setup: [u8; 8],
     /// Transfer buffer payload.
     pub transfer_buffer: Bytes,
+    /// ISO packet descriptors (only present for isochronous transfers).
+    pub iso_packet_descriptors: Vec<IsoPacketDescriptor>,
 }
 
 impl WireFormat for CmdSubmit {
@@ -131,6 +201,12 @@ impl WireFormat for CmdSubmit {
         buf.put_slice(&self.setup);
         if !self.transfer_buffer.is_empty() {
             buf.put_slice(&self.transfer_buffer);
+        }
+        // Encode ISO packet descriptors after the transfer buffer
+        if is_iso_transfer(self.number_of_packets) {
+            for desc in &self.iso_packet_descriptors {
+                desc.encode(buf);
+            }
         }
     }
 
@@ -183,6 +259,30 @@ impl WireFormat for CmdSubmit {
             Bytes::new()
         };
 
+        // Decode ISO packet descriptors if this is an ISO transfer
+        let iso_packet_descriptors = if is_iso_transfer(number_of_packets) {
+            if number_of_packets > MAX_ISO_PACKETS {
+                return Err(ProtocolError::TooManyIsoPackets {
+                    count: number_of_packets,
+                    max: MAX_ISO_PACKETS,
+                });
+            }
+            let iso_bytes_needed = number_of_packets as usize * ISO_PACKET_DESCRIPTOR_SIZE;
+            if buf.remaining() < iso_bytes_needed {
+                return Err(ProtocolError::BufferTooShort {
+                    needed: iso_bytes_needed,
+                    available: buf.remaining(),
+                });
+            }
+            let mut descs = Vec::with_capacity(number_of_packets as usize);
+            for _ in 0..number_of_packets {
+                descs.push(IsoPacketDescriptor::decode(buf)?);
+            }
+            descs
+        } else {
+            Vec::new()
+        };
+
         Ok(CmdSubmit {
             header,
             transfer_flags,
@@ -192,11 +292,14 @@ impl WireFormat for CmdSubmit {
             interval,
             setup,
             transfer_buffer,
+            iso_packet_descriptors,
         })
     }
 
     fn wire_size(&self) -> usize {
-        URB_HEADER_TOTAL_SIZE + self.transfer_buffer.len()
+        URB_HEADER_TOTAL_SIZE
+            + self.transfer_buffer.len()
+            + self.iso_packet_descriptors.len() * ISO_PACKET_DESCRIPTOR_SIZE
     }
 }
 
@@ -226,6 +329,8 @@ pub struct RetSubmit {
     pub error_count: u32,
     /// Transfer buffer payload (for IN transfers).
     pub transfer_buffer: Bytes,
+    /// ISO packet descriptors (only present for isochronous transfers).
+    pub iso_packet_descriptors: Vec<IsoPacketDescriptor>,
 }
 
 impl WireFormat for RetSubmit {
@@ -239,6 +344,12 @@ impl WireFormat for RetSubmit {
         buf.put_u64(0); // 8 bytes padding
         if !self.transfer_buffer.is_empty() {
             buf.put_slice(&self.transfer_buffer);
+        }
+        // Encode ISO packet descriptors after the transfer buffer
+        if is_iso_transfer(self.number_of_packets) {
+            for desc in &self.iso_packet_descriptors {
+                desc.encode(buf);
+            }
         }
     }
 
@@ -288,6 +399,30 @@ impl WireFormat for RetSubmit {
             Bytes::new()
         };
 
+        // Decode ISO packet descriptors if this is an ISO transfer
+        let iso_packet_descriptors = if is_iso_transfer(number_of_packets) {
+            if number_of_packets > MAX_ISO_PACKETS {
+                return Err(ProtocolError::TooManyIsoPackets {
+                    count: number_of_packets,
+                    max: MAX_ISO_PACKETS,
+                });
+            }
+            let iso_bytes_needed = number_of_packets as usize * ISO_PACKET_DESCRIPTOR_SIZE;
+            if buf.remaining() < iso_bytes_needed {
+                return Err(ProtocolError::BufferTooShort {
+                    needed: iso_bytes_needed,
+                    available: buf.remaining(),
+                });
+            }
+            let mut descs = Vec::with_capacity(number_of_packets as usize);
+            for _ in 0..number_of_packets {
+                descs.push(IsoPacketDescriptor::decode(buf)?);
+            }
+            descs
+        } else {
+            Vec::new()
+        };
+
         Ok(RetSubmit {
             header,
             status,
@@ -296,11 +431,14 @@ impl WireFormat for RetSubmit {
             number_of_packets,
             error_count,
             transfer_buffer,
+            iso_packet_descriptors,
         })
     }
 
     fn wire_size(&self) -> usize {
-        URB_HEADER_TOTAL_SIZE + self.transfer_buffer.len()
+        URB_HEADER_TOTAL_SIZE
+            + self.transfer_buffer.len()
+            + self.iso_packet_descriptors.len() * ISO_PACKET_DESCRIPTOR_SIZE
     }
 }
 
@@ -493,6 +631,7 @@ mod tests {
             interval: 0,
             setup: [0x80, 0x06, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00],
             transfer_buffer: Bytes::new(),
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -521,6 +660,7 @@ mod tests {
             interval: 0,
             setup: [0; 8],
             transfer_buffer: Bytes::from(data.clone()),
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -548,6 +688,7 @@ mod tests {
             number_of_packets: 0xFFFFFFFF,
             error_count: 0,
             transfer_buffer: Bytes::new(),
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -575,6 +716,7 @@ mod tests {
             number_of_packets: 0xFFFFFFFF,
             error_count: 0,
             transfer_buffer: Bytes::from(data.clone()),
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -704,11 +846,173 @@ mod tests {
             interval: 0,
             setup: [0; 8],
             transfer_buffer: Bytes::new(),
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
         let mut cursor = &buf[..];
         let result = CmdUnlink::decode(&mut cursor);
         assert!(matches!(result, Err(ProtocolError::InvalidCommand(1))));
+    }
+
+    // ── ISO packet descriptor tests ─────────────────────────────────
+
+    #[test]
+    fn test_iso_packet_descriptor_roundtrip() {
+        let desc = IsoPacketDescriptor {
+            offset: 0,
+            length: 192,
+            actual_length: 192,
+            status: 0,
+        };
+        let mut buf = Vec::new();
+        desc.encode(&mut buf);
+        assert_eq!(buf.len(), 16);
+
+        let mut cursor = &buf[..];
+        let decoded = IsoPacketDescriptor::decode(&mut cursor).unwrap();
+        assert_eq!(decoded, desc);
+    }
+
+    #[test]
+    fn test_iso_packet_descriptor_big_endian() {
+        let desc = IsoPacketDescriptor {
+            offset: 0x0000_00C0,
+            length: 0x0000_00C0,
+            actual_length: 0x0000_0080,
+            status: 0x0000_0000,
+        };
+        let mut buf = Vec::new();
+        desc.encode(&mut buf);
+        assert_eq!(&buf[0..4], &[0x00, 0x00, 0x00, 0xC0]); // offset
+        assert_eq!(&buf[4..8], &[0x00, 0x00, 0x00, 0xC0]); // length
+        assert_eq!(&buf[8..12], &[0x00, 0x00, 0x00, 0x80]); // actual_length
+        assert_eq!(&buf[12..16], &[0x00, 0x00, 0x00, 0x00]); // status
+    }
+
+    #[test]
+    fn test_cmd_submit_with_iso_descriptors() {
+        let iso_descs = vec![
+            IsoPacketDescriptor {
+                offset: 0,
+                length: 192,
+                actual_length: 0,
+                status: 0,
+            },
+            IsoPacketDescriptor {
+                offset: 192,
+                length: 192,
+                actual_length: 0,
+                status: 0,
+            },
+            IsoPacketDescriptor {
+                offset: 384,
+                length: 192,
+                actual_length: 0,
+                status: 0,
+            },
+        ];
+        let pcm_data = vec![0u8; 576]; // 3 * 192
+        let msg = CmdSubmit {
+            header: UsbipHeaderBasic {
+                command: Command::CmdSubmit as u32,
+                seqnum: 1,
+                devid: 2,
+                direction: 0, // OUT
+                ep: 3,
+            },
+            transfer_flags: 0,
+            transfer_buffer_length: 576,
+            start_frame: 0,
+            number_of_packets: 3,
+            interval: 1,
+            setup: [0; 8],
+            transfer_buffer: Bytes::from(pcm_data),
+            iso_packet_descriptors: iso_descs,
+        };
+        let mut buf = Vec::new();
+        msg.encode(&mut buf);
+        // 48 header + 576 data + 3*16 iso descs = 48 + 576 + 48 = 672
+        assert_eq!(buf.len(), 48 + 576 + 48);
+
+        let mut cursor = &buf[..];
+        let decoded = CmdSubmit::decode(&mut cursor).unwrap();
+        assert_eq!(decoded, msg);
+        assert_eq!(decoded.iso_packet_descriptors.len(), 3);
+    }
+
+    #[test]
+    fn test_ret_submit_with_iso_descriptors() {
+        let iso_descs = vec![
+            IsoPacketDescriptor {
+                offset: 0,
+                length: 192,
+                actual_length: 192,
+                status: 0,
+            },
+            IsoPacketDescriptor {
+                offset: 192,
+                length: 192,
+                actual_length: 128,
+                status: 0,
+            },
+        ];
+        let pcm_data = vec![0xABu8; 320]; // 192 + 128
+        let msg = RetSubmit {
+            header: UsbipHeaderBasic {
+                command: Command::RetSubmit as u32,
+                seqnum: 1,
+                devid: 2,
+                direction: 1, // IN
+                ep: 4,
+            },
+            status: 0,
+            actual_length: 320,
+            start_frame: 10,
+            number_of_packets: 2,
+            error_count: 0,
+            transfer_buffer: Bytes::from(pcm_data),
+            iso_packet_descriptors: iso_descs,
+        };
+        let mut buf = Vec::new();
+        msg.encode(&mut buf);
+        // 48 header + 320 data + 2*16 iso descs = 48 + 320 + 32 = 400
+        assert_eq!(buf.len(), 48 + 320 + 32);
+
+        let mut cursor = &buf[..];
+        let decoded = RetSubmit::decode(&mut cursor).unwrap();
+        assert_eq!(decoded, msg);
+        assert_eq!(decoded.iso_packet_descriptors.len(), 2);
+        assert_eq!(decoded.iso_packet_descriptors[1].actual_length, 128);
+    }
+
+    #[test]
+    fn test_backward_compat_non_iso_still_works() {
+        // Ensure that non-ISO transfers (0xFFFFFFFF) produce no ISO descriptors
+        let msg = CmdSubmit {
+            header: UsbipHeaderBasic {
+                command: Command::CmdSubmit as u32,
+                seqnum: 1,
+                devid: 2,
+                direction: 1, // IN
+                ep: 0,
+            },
+            transfer_flags: 0,
+            transfer_buffer_length: 64,
+            start_frame: 0,
+            number_of_packets: 0xFFFFFFFF,
+            interval: 0,
+            setup: [0x80, 0x06, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00],
+            transfer_buffer: Bytes::new(),
+            iso_packet_descriptors: vec![],
+        };
+        let mut buf = Vec::new();
+        msg.encode(&mut buf);
+        assert_eq!(buf.len(), 48); // No ISO descriptors appended
+
+        let mut cursor = &buf[..];
+        let decoded = CmdSubmit::decode(&mut cursor).unwrap();
+        assert_eq!(decoded.iso_packet_descriptors.len(), 0);
+        assert_eq!(decoded.number_of_packets, 0xFFFFFFFF);
     }
 }

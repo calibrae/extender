@@ -191,7 +191,6 @@ proptest! {
         transfer_flags in any::<u32>(),
         (transfer_buffer_length, transfer_buffer) in arb_transfer_buffer(1024),
         start_frame in any::<u32>(),
-        number_of_packets in any::<u32>(),
         interval in any::<u32>(),
         setup in prop::array::uniform8(any::<u8>()),
     ) {
@@ -200,10 +199,11 @@ proptest! {
             transfer_flags,
             transfer_buffer_length,
             start_frame,
-            number_of_packets,
+            number_of_packets: 0xFFFF_FFFF, // non-ISO
             interval,
             setup,
             transfer_buffer,
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -218,7 +218,6 @@ proptest! {
         transfer_flags in any::<u32>(),
         transfer_buffer_length in 0u32..=1_048_576u32,
         start_frame in any::<u32>(),
-        number_of_packets in any::<u32>(),
         interval in any::<u32>(),
         setup in prop::array::uniform8(any::<u8>()),
     ) {
@@ -227,10 +226,11 @@ proptest! {
             transfer_flags,
             transfer_buffer_length,
             start_frame,
-            number_of_packets,
+            number_of_packets: 0xFFFF_FFFF, // non-ISO
             interval,
             setup,
             transfer_buffer: Bytes::new(), // IN requests have no payload
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -245,7 +245,6 @@ proptest! {
         status in any::<i32>(),
         (actual_length, transfer_buffer) in arb_transfer_buffer(1024),
         start_frame in any::<u32>(),
-        number_of_packets in any::<u32>(),
         error_count in any::<u32>(),
     ) {
         let msg = RetSubmit {
@@ -253,9 +252,10 @@ proptest! {
             status,
             actual_length,
             start_frame,
-            number_of_packets,
+            number_of_packets: 0xFFFF_FFFF, // non-ISO
             error_count,
             transfer_buffer,
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -270,7 +270,6 @@ proptest! {
         status in any::<i32>(),
         actual_length in 0u32..=1_048_576u32,
         start_frame in any::<u32>(),
-        number_of_packets in any::<u32>(),
         error_count in any::<u32>(),
     ) {
         let msg = RetSubmit {
@@ -278,9 +277,10 @@ proptest! {
             status,
             actual_length,
             start_frame,
-            number_of_packets,
+            number_of_packets: 0xFFFF_FFFF, // non-ISO
             error_count,
             transfer_buffer: Bytes::new(), // OUT returns have no payload
+            iso_packet_descriptors: vec![],
         };
         let mut buf = Vec::new();
         msg.encode(&mut buf);
@@ -445,6 +445,7 @@ fn golden_cmd_submit_control_in() {
         interval: 0,
         setup: [0x80, 0x06, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00],
         transfer_buffer: Bytes::new(),
+        iso_packet_descriptors: vec![],
     };
 
     let mut buf = Vec::new();
@@ -545,6 +546,7 @@ fn golden_ret_submit_in_with_data() {
         number_of_packets: 0xFFFFFFFF,
         error_count: 0,
         transfer_buffer: Bytes::from(data.clone()),
+        iso_packet_descriptors: vec![],
     };
 
     let mut buf = Vec::new();

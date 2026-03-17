@@ -626,6 +626,7 @@ impl MassStorageDevice {
             interval: 0,
             setup: [0u8; 8],
             transfer_buffer: Bytes::copy_from_slice(payload),
+            iso_packet_descriptors: vec![],
         };
 
         let mut buf = BytesMut::new();
@@ -655,6 +656,7 @@ impl MassStorageDevice {
             interval: 0,
             setup: [0u8; 8],
             transfer_buffer: Bytes::new(),
+            iso_packet_descriptors: vec![],
         };
 
         let mut buf = BytesMut::new();
@@ -1013,6 +1015,7 @@ mod tests {
                     number_of_packets: 0,
                     error_count: 0,
                     transfer_buffer: Bytes::new(),
+                    iso_packet_descriptors: vec![],
                 });
                 write_urb_message(&mut writer, &ret).await.unwrap();
 
@@ -1042,6 +1045,7 @@ mod tests {
                         number_of_packets: 0,
                         error_count: 0,
                         transfer_buffer: Bytes::from(inquiry_response),
+                        iso_packet_descriptors: vec![],
                     });
                     write_urb_message(&mut writer, &ret2).await.unwrap();
                 }
@@ -1070,6 +1074,7 @@ mod tests {
                         number_of_packets: 0,
                         error_count: 0,
                         transfer_buffer: Bytes::from(csw.to_bytes().to_vec()),
+                        iso_packet_descriptors: vec![],
                     });
                     write_urb_message(&mut writer, &ret3).await.unwrap();
                 }
@@ -1099,6 +1104,7 @@ mod tests {
                     number_of_packets: 0,
                     error_count: 0,
                     transfer_buffer: Bytes::new(),
+                    iso_packet_descriptors: vec![],
                 });
                 write_urb_message(&mut writer, &ret).await.unwrap();
 
@@ -1125,6 +1131,7 @@ mod tests {
                         number_of_packets: 0,
                         error_count: 0,
                         transfer_buffer: Bytes::from(cap_data),
+                        iso_packet_descriptors: vec![],
                     });
                     write_urb_message(&mut writer, &ret2).await.unwrap();
                 }
@@ -1152,6 +1159,7 @@ mod tests {
                         number_of_packets: 0,
                         error_count: 0,
                         transfer_buffer: Bytes::from(csw.to_bytes().to_vec()),
+                        iso_packet_descriptors: vec![],
                     });
                     write_urb_message(&mut writer, &ret3).await.unwrap();
                 }

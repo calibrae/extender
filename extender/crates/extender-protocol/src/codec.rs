@@ -13,6 +13,11 @@ use crate::error::ProtocolError;
 use crate::urb::*;
 use crate::wire::WireFormat;
 
+// Re-import IsoPacketDescriptor explicitly for clarity in the async path
+use crate::urb::{
+    is_iso_transfer, IsoPacketDescriptor, ISO_PACKET_DESCRIPTOR_SIZE, MAX_ISO_PACKETS,
+};
+
 /// Read a discovery-phase message from an async reader.
 ///
 /// Reads the 4-byte header (version + opcode) to determine the message type,
@@ -177,6 +182,27 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
                 Bytes::new()
             };
 
+            // Read ISO packet descriptors if this is an ISO transfer
+            let iso_packet_descriptors = if is_iso_transfer(number_of_packets) {
+                if number_of_packets > MAX_ISO_PACKETS {
+                    return Err(ProtocolError::TooManyIsoPackets {
+                        count: number_of_packets,
+                        max: MAX_ISO_PACKETS,
+                    });
+                }
+                let iso_bytes = number_of_packets as usize * ISO_PACKET_DESCRIPTOR_SIZE;
+                let mut iso_buf = vec![0u8; iso_bytes];
+                reader.read_exact(&mut iso_buf).await?;
+                let mut cursor = &iso_buf[..];
+                let mut descs = Vec::with_capacity(number_of_packets as usize);
+                for _ in 0..number_of_packets {
+                    descs.push(IsoPacketDescriptor::decode(&mut cursor)?);
+                }
+                descs
+            } else {
+                Vec::new()
+            };
+
             Ok(UrbMessage::CmdSubmit(CmdSubmit {
                 header,
                 transfer_flags,
@@ -186,6 +212,7 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
                 interval,
                 setup,
                 transfer_buffer,
+                iso_packet_descriptors,
             }))
         }
         Command::RetSubmit => {
@@ -216,6 +243,27 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
                 Bytes::new()
             };
 
+            // Read ISO packet descriptors if this is an ISO transfer
+            let iso_packet_descriptors = if is_iso_transfer(number_of_packets) {
+                if number_of_packets > MAX_ISO_PACKETS {
+                    return Err(ProtocolError::TooManyIsoPackets {
+                        count: number_of_packets,
+                        max: MAX_ISO_PACKETS,
+                    });
+                }
+                let iso_bytes = number_of_packets as usize * ISO_PACKET_DESCRIPTOR_SIZE;
+                let mut iso_buf = vec![0u8; iso_bytes];
+                reader.read_exact(&mut iso_buf).await?;
+                let mut cursor = &iso_buf[..];
+                let mut descs = Vec::with_capacity(number_of_packets as usize);
+                for _ in 0..number_of_packets {
+                    descs.push(IsoPacketDescriptor::decode(&mut cursor)?);
+                }
+                descs
+            } else {
+                Vec::new()
+            };
+
             Ok(UrbMessage::RetSubmit(RetSubmit {
                 header,
                 status,
@@ -224,6 +272,7 @@ pub async fn read_urb_message<R: AsyncReadExt + Unpin>(
                 number_of_packets,
                 error_count,
                 transfer_buffer,
+                iso_packet_descriptors,
             }))
         }
         Command::CmdUnlink => {
@@ -396,6 +445,7 @@ mod tests {
             interval: 0,
             setup: [0; 8],
             transfer_buffer: Bytes::from_static(&[0xDE, 0xAD, 0xBE, 0xEF]),
+            iso_packet_descriptors: vec![],
         });
 
         let mut buf = Vec::new();
@@ -423,6 +473,7 @@ mod tests {
             number_of_packets: 0xFFFFFFFF,
             error_count: 0,
             transfer_buffer: Bytes::from(data),
+            iso_packet_descriptors: vec![],
         });
 
         let mut buf = Vec::new();
