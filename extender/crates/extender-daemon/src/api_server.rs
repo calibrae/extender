@@ -3,6 +3,8 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::config::SecurityConfig;
+use crate::device_acl;
 use extender_api::{
     read_message, write_message, DaemonStatus, DeviceInfo, ExportedDeviceInfo, JsonRpcError,
     JsonRpcRequest, JsonRpcResponse, UsbSpeed,
@@ -18,15 +20,17 @@ pub struct ApiState {
     pub start_time: std::time::Instant,
     pub event_tx: broadcast::Sender<String>,
     pub registry: Arc<ExportRegistry>,
+    pub security: SecurityConfig,
 }
 
 impl ApiState {
-    pub fn new(registry: Arc<ExportRegistry>) -> Self {
+    pub fn new(registry: Arc<ExportRegistry>, security: SecurityConfig) -> Self {
         let (event_tx, _) = broadcast::channel(256);
         Self {
             start_time: std::time::Instant::now(),
             event_tx,
             registry,
+            security,
         }
     }
 }
@@ -267,6 +271,23 @@ async fn handle_bind_device(
         .and_then(|v| v.as_str())
         .ok_or_else(|| JsonRpcError::invalid_params("missing 'bus_id'"))?;
 
+    // Look up the device's VID:PID and check against the ACL policy.
+    let local_devices = extender_server::device::enumerate_devices().map_err(|e| {
+        tracing::debug!("USB enumeration failed: {e}");
+        JsonRpcError::internal_error("USB enumeration failed".to_string())
+    })?;
+    let device = local_devices
+        .iter()
+        .find(|d| d.bus_id == bus_id)
+        .ok_or_else(|| JsonRpcError::invalid_params(format!("device '{bus_id}' not found")))?;
+
+    if !device_acl::is_device_allowed(device.vendor_id, device.product_id, &state.security) {
+        return Err(JsonRpcError::internal_error(format!(
+            "device {:04x}:{:04x} is not allowed by ACL policy",
+            device.vendor_id, device.product_id
+        )));
+    }
+
     state.registry.bind_device(bus_id).await.map_err(|e| {
         tracing::debug!("bind_device failed: {e}");
         JsonRpcError::internal_error("bind device failed".to_string())
@@ -466,7 +487,10 @@ mod tests {
     use tokio::net::UnixStream;
 
     fn test_state() -> Arc<ApiState> {
-        Arc::new(ApiState::new(Arc::new(ExportRegistry::new())))
+        Arc::new(ApiState::new(
+            Arc::new(ExportRegistry::new()),
+            SecurityConfig::default(),
+        ))
     }
 
     #[tokio::test]

@@ -51,6 +51,10 @@ pub enum ClientError {
     #[error("client import not supported on this platform yet")]
     PlatformNotSupported,
 
+    /// A TLS configuration or connection error.
+    #[error("TLS error: {0}")]
+    Tls(String),
+
     /// Error parsing VHCI status file.
     #[error("failed to parse VHCI status: {reason}")]
     VhciParseError { reason: String },

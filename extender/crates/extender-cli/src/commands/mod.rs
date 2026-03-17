@@ -3,5 +3,7 @@
 pub mod attach;
 pub mod bind;
 pub mod daemon;
+pub mod discover;
 pub mod list;
 pub mod status;
+pub mod tls_gen;

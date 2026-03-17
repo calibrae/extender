@@ -90,6 +90,10 @@ pub enum ServerError {
     /// An I/O error occurred during connection handling.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    /// A TLS configuration or handshake error.
+    #[error("TLS error: {0}")]
+    Tls(String),
 }
 
 /// Map a `rusb::Error` to a Linux errno value for USB/IP protocol compatibility.

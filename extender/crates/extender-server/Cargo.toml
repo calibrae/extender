@@ -12,6 +12,14 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 bytes = { workspace = true }
 tokio = { workspace = true }
+tokio-rustls = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+rcgen = { workspace = true }
+tempfile = "3"
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+tokio-rustls = { workspace = true }

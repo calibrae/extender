@@ -20,6 +20,7 @@ tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
 nix = { workspace = true }
 dirs = { workspace = true }
+mdns-sd = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

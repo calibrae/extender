@@ -23,6 +23,7 @@ pub mod error;
 pub mod export;
 pub mod handle;
 pub mod session;
+pub mod tls;
 pub mod transfer;
 
 // Re-export key types for convenience.
@@ -32,6 +33,7 @@ pub use error::ServerError;
 pub use export::{ExportRegistry, ExportedDevice, SessionId};
 pub use handle::ManagedDevice;
 pub use session::DeviceSession;
+pub use tls::TlsServerConfig;
 pub use transfer::{
     execute_bulk_transfer, execute_control_transfer, execute_interrupt_transfer, TransferResult,
 };

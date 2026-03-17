@@ -5,6 +5,8 @@
 
 pub mod api_server;
 pub mod config;
+pub mod device_acl;
+pub mod mdns;
 pub mod privileges;
 pub mod signals;
 
@@ -80,23 +82,62 @@ impl Daemon {
             privileges::drop_privileges(user, group)?;
         }
 
-        // Start USB/IP TCP server.
+        // Start USB/IP TCP server (with optional TLS).
         let listen_addr = format!(
             "{}:{}",
             self.config.server.listen_address, self.config.server.port
         );
-        let server_engine = match extender_server::ServerEngine::new(listen_addr.parse()?).await {
-            Ok(engine) => {
-                info!(
-                    listen = %self.config.server.listen_address,
-                    port = self.config.server.port,
-                    "USB/IP server listening"
-                );
-                Some(engine)
+        let parsed_addr = listen_addr.parse()?;
+
+        let tls_config = match (&self.config.server.tls_cert, &self.config.server.tls_key) {
+            (Some(cert), Some(key)) => {
+                info!(cert = %cert, key = %key, "TLS enabled for USB/IP server");
+                Some(extender_server::TlsServerConfig {
+                    cert_path: cert.clone(),
+                    key_path: key.clone(),
+                    ca_path: self.config.tls.ca.clone(),
+                })
             }
-            Err(e) => {
-                warn!("failed to start USB/IP server: {}", e);
+            (Some(_), None) | (None, Some(_)) => {
+                warn!("TLS partially configured: both tls_cert and tls_key are required. Starting without TLS.");
                 None
+            }
+            _ => {
+                info!("TLS not configured, USB/IP server using plain TCP");
+                None
+            }
+        };
+
+        let server_engine = if let Some(ref tls_cfg) = tls_config {
+            match extender_server::ServerEngine::new_tls(parsed_addr, tls_cfg).await {
+                Ok(engine) => {
+                    info!(
+                        listen = %self.config.server.listen_address,
+                        port = self.config.server.port,
+                        tls = true,
+                        "USB/IP server listening (TLS)"
+                    );
+                    Some(engine)
+                }
+                Err(e) => {
+                    warn!("failed to start TLS USB/IP server: {}", e);
+                    None
+                }
+            }
+        } else {
+            match extender_server::ServerEngine::new(parsed_addr).await {
+                Ok(engine) => {
+                    info!(
+                        listen = %self.config.server.listen_address,
+                        port = self.config.server.port,
+                        "USB/IP server listening"
+                    );
+                    Some(engine)
+                }
+                Err(e) => {
+                    warn!("failed to start USB/IP server: {}", e);
+                    None
+                }
             }
         };
 
@@ -106,7 +147,27 @@ impl Daemon {
             .map(|e| Arc::clone(e.registry()))
             .unwrap_or_else(|| Arc::new(extender_server::ExportRegistry::new()));
 
-        let state = Arc::new(api_server::ApiState::new(registry));
+        let state = Arc::new(api_server::ApiState::new(
+            registry.clone(),
+            self.config.security.clone(),
+        ));
+
+        // Start mDNS service advertisement if enabled.
+        let mdns_advertiser = if self.config.daemon.mdns_enabled {
+            match mdns::MdnsAdvertiser::new(self.config.server.port, Arc::clone(&registry)) {
+                Ok(advertiser) => {
+                    info!("mDNS service advertisement started");
+                    Some(advertiser)
+                }
+                Err(e) => {
+                    warn!("failed to start mDNS advertisement: {}", e);
+                    None
+                }
+            }
+        } else {
+            info!("mDNS advertisement disabled");
+            None
+        };
 
         // Signal handler with config reload on SIGHUP.
         let reload_config = {
@@ -143,6 +204,11 @@ impl Daemon {
         // Wait for server to finish.
         if let Some(handle) = server_handle {
             let _ = handle.await;
+        }
+
+        // Shut down mDNS advertisement.
+        if let Some(advertiser) = mdns_advertiser {
+            advertiser.shutdown();
         }
 
         // Cleanup.

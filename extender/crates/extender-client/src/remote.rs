@@ -3,6 +3,7 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -10,12 +11,13 @@ use extender_protocol::codec::{read_op_message, write_op_message};
 use extender_protocol::{OpMessage, OpRepDevlist, OpReqDevlist};
 
 use crate::error::ClientError;
+use crate::tls::TlsClientConfig;
 use crate::types::RemoteDevice;
 
 /// Default connect timeout in seconds.
 const CONNECT_TIMEOUT_SECS: u64 = 5;
 
-/// Query a remote USB/IP server for its list of exported devices.
+/// Query a remote USB/IP server for its list of exported devices (plain TCP).
 ///
 /// Opens a TCP connection to `addr`, sends OP_REQ_DEVLIST, parses
 /// OP_REP_DEVLIST, and returns a list of user-friendly `RemoteDevice` structs.
@@ -32,13 +34,55 @@ pub async fn list_remote_devices(addr: SocketAddr) -> Result<Vec<RemoteDevice>, 
         .map_err(ClientError::Io)?;
 
     let (mut reader, mut writer) = stream.into_split();
+    devlist_exchange(&mut reader, &mut writer).await
+}
 
+/// Query a remote USB/IP server for its list of exported devices (TLS).
+///
+/// Same as [`list_remote_devices`] but wraps the TCP connection with TLS.
+pub async fn list_remote_devices_tls(
+    addr: SocketAddr,
+    tls_config: &TlsClientConfig,
+) -> Result<Vec<RemoteDevice>, ClientError> {
+    let connect_timeout = Duration::from_secs(CONNECT_TIMEOUT_SECS);
+
+    let tcp_stream = timeout(connect_timeout, TcpStream::connect(addr))
+        .await
+        .map_err(|_| ClientError::ConnectTimeout {
+            addr,
+            timeout_secs: CONNECT_TIMEOUT_SECS,
+        })?
+        .map_err(ClientError::Io)?;
+
+    let connector = tls_config.build_connector()?;
+    let server_name = tls_config.server_name()?;
+
+    let tls_stream = connector
+        .connect(server_name, tcp_stream)
+        .await
+        .map_err(|e| ClientError::Tls(format!("TLS handshake failed: {e}")))?;
+
+    let (reader, writer) = tokio::io::split(tls_stream);
+    let mut reader = reader;
+    let mut writer = writer;
+    devlist_exchange(&mut reader, &mut writer).await
+}
+
+/// Perform the DEVLIST protocol exchange over any async stream.
+async fn devlist_exchange<R, W>(
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<Vec<RemoteDevice>, ClientError>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
     // Send OP_REQ_DEVLIST
     let req = OpMessage::ReqDevlist(OpReqDevlist);
-    write_op_message(&mut writer, &req).await?;
+    write_op_message(writer, &req).await?;
 
     // Read OP_REP_DEVLIST
-    let reply = read_op_message(&mut reader).await?;
+    let reply = read_op_message(reader).await?;
 
     match reply {
         OpMessage::RepDevlist(OpRepDevlist { status, devices }) => {

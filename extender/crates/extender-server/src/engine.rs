@@ -3,15 +3,20 @@
 //! [`ServerEngine`] binds a TCP listener and spawns a task per inbound
 //! connection. Each connection is dispatched to the per-connection handler
 //! in [`crate::connection`].
+//!
+//! When TLS is configured, accepted connections are wrapped with
+//! [`tokio_rustls::TlsAcceptor`] before being handed to the connection handler.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use tokio::net::TcpListener;
+use tokio_rustls::TlsAcceptor;
 
 use crate::connection::handle_connection;
 use crate::error::ServerError;
 use crate::export::ExportRegistry;
+use crate::tls::TlsServerConfig;
 
 /// The USB/IP server engine.
 ///
@@ -21,10 +26,11 @@ use crate::export::ExportRegistry;
 pub struct ServerEngine {
     listener: TcpListener,
     registry: Arc<ExportRegistry>,
+    tls_acceptor: Option<TlsAcceptor>,
 }
 
 impl ServerEngine {
-    /// Create a new server engine bound to the given address.
+    /// Create a new server engine bound to the given address (plain TCP).
     ///
     /// This binds the TCP listener immediately but does not start
     /// accepting connections until [`run`](ServerEngine::run) is called.
@@ -34,11 +40,36 @@ impl ServerEngine {
             .map_err(ServerError::ListenerBind)?;
 
         let local_addr = listener.local_addr().map_err(ServerError::ListenerBind)?;
-        tracing::info!(%local_addr, "server engine bound");
+        tracing::info!(%local_addr, "server engine bound (plain TCP)");
 
         Ok(ServerEngine {
             listener,
             registry: Arc::new(ExportRegistry::new()),
+            tls_acceptor: None,
+        })
+    }
+
+    /// Create a new server engine bound to the given address with TLS enabled.
+    ///
+    /// All accepted connections are wrapped with TLS. Plain TCP connections
+    /// will fail the TLS handshake and be rejected.
+    pub async fn new_tls(
+        addr: SocketAddr,
+        tls_config: &TlsServerConfig,
+    ) -> Result<Self, ServerError> {
+        let acceptor = tls_config.build_acceptor()?;
+
+        let listener = TcpListener::bind(addr)
+            .await
+            .map_err(ServerError::ListenerBind)?;
+
+        let local_addr = listener.local_addr().map_err(ServerError::ListenerBind)?;
+        tracing::info!(%local_addr, "server engine bound (TLS enabled)");
+
+        Ok(ServerEngine {
+            listener,
+            registry: Arc::new(ExportRegistry::new()),
+            tls_acceptor: Some(acceptor),
         })
     }
 
@@ -46,7 +77,29 @@ impl ServerEngine {
     ///
     /// Useful for testing or when the daemon manages the registry externally.
     pub fn from_parts(listener: TcpListener, registry: Arc<ExportRegistry>) -> Self {
-        ServerEngine { listener, registry }
+        ServerEngine {
+            listener,
+            registry,
+            tls_acceptor: None,
+        }
+    }
+
+    /// Create a server engine from parts with optional TLS.
+    pub fn from_parts_tls(
+        listener: TcpListener,
+        registry: Arc<ExportRegistry>,
+        tls_acceptor: Option<TlsAcceptor>,
+    ) -> Self {
+        ServerEngine {
+            listener,
+            registry,
+            tls_acceptor,
+        }
+    }
+
+    /// Returns whether TLS is enabled on this server engine.
+    pub fn tls_enabled(&self) -> bool {
+        self.tls_acceptor.is_some()
     }
 
     /// Get a reference to the export registry.
@@ -85,8 +138,21 @@ impl ServerEngine {
             };
 
             let registry = Arc::clone(&self.registry);
+            let tls_acceptor = self.tls_acceptor.clone();
+
             tokio::spawn(async move {
-                handle_connection(stream, registry, peer).await;
+                if let Some(acceptor) = tls_acceptor {
+                    match acceptor.accept(stream).await {
+                        Ok(tls_stream) => {
+                            handle_connection(tls_stream, registry, peer).await;
+                        }
+                        Err(e) => {
+                            tracing::warn!(%peer, "TLS handshake failed: {}", e);
+                        }
+                    }
+                } else {
+                    handle_connection(stream, registry, peer).await;
+                }
             });
         }
     }
@@ -126,8 +192,21 @@ impl ServerEngine {
             };
 
             let registry = Arc::clone(&self.registry);
+            let tls_acceptor = self.tls_acceptor.clone();
+
             tokio::spawn(async move {
-                handle_connection(stream, registry, peer).await;
+                if let Some(acceptor) = tls_acceptor {
+                    match acceptor.accept(stream).await {
+                        Ok(tls_stream) => {
+                            handle_connection(tls_stream, registry, peer).await;
+                        }
+                        Err(e) => {
+                            tracing::warn!(%peer, "TLS handshake failed: {}", e);
+                        }
+                    }
+                } else {
+                    handle_connection(stream, registry, peer).await;
+                }
             });
         }
     }
@@ -144,6 +223,7 @@ mod tests {
         let local = engine.local_addr().unwrap();
         assert!(local.port() > 0);
         assert_eq!(local.ip(), std::net::Ipv4Addr::LOCALHOST);
+        assert!(!engine.tls_enabled());
     }
 
     #[tokio::test]
@@ -152,6 +232,7 @@ mod tests {
         let registry = Arc::new(ExportRegistry::new());
         let engine = ServerEngine::from_parts(listener, registry);
         assert!(engine.local_addr().is_ok());
+        assert!(!engine.tls_enabled());
     }
 
     #[tokio::test]

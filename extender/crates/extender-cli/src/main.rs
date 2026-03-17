@@ -52,6 +52,14 @@ pub enum Command {
         /// Remote server USB/IP port (default: 3240).
         #[arg(short, long)]
         port: Option<u16>,
+
+        /// Enable TLS for the remote connection.
+        #[arg(long)]
+        tls: bool,
+
+        /// Path to CA certificate for TLS verification.
+        #[arg(long)]
+        tls_ca: Option<String>,
     },
 
     /// Export a local USB device for remote access.
@@ -90,6 +98,13 @@ pub enum Command {
         port: u32,
     },
 
+    /// Discover Extender servers on the LAN via mDNS/DNS-SD.
+    Discover {
+        /// Discovery timeout in seconds (default: 3).
+        #[arg(short, long)]
+        timeout: Option<u64>,
+    },
+
     /// Show daemon status and device overview.
     Status,
 
@@ -114,6 +129,21 @@ pub enum Command {
         /// Log verbosity level (trace, debug, info, warn, error).
         #[arg(long)]
         log_level: Option<String>,
+
+        /// Path to PEM certificate file for TLS.
+        #[arg(long)]
+        tls_cert: Option<String>,
+
+        /// Path to PEM private key file for TLS.
+        #[arg(long)]
+        tls_key: Option<String>,
+    },
+
+    /// Generate self-signed TLS certificates for the server and client.
+    TlsGen {
+        /// Output directory (default: ~/.config/extender/tls/).
+        #[arg(short, long)]
+        output: Option<String>,
     },
 
     /// Print version information.
@@ -138,7 +168,20 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             local,
             remote,
             port,
-        } => commands::list::run(&cli.socket, cli.format, local, remote.as_deref(), port).await,
+            tls,
+            tls_ca,
+        } => {
+            commands::list::run(
+                &cli.socket,
+                cli.format,
+                local,
+                remote.as_deref(),
+                port,
+                tls,
+                tls_ca.as_deref(),
+            )
+            .await
+        }
 
         Command::Bind { busid } => commands::bind::run_bind(&cli.socket, cli.format, &busid).await,
 
@@ -156,6 +199,8 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             commands::attach::run_detach(&cli.socket, cli.format, port).await
         }
 
+        Command::Discover { timeout } => commands::discover::run(cli.format, timeout).await,
+
         Command::Status => commands::status::run(&cli.socket, cli.format).await,
 
         Command::Daemon {
@@ -164,6 +209,8 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             api_socket,
             config,
             log_level,
+            tls_cert,
+            tls_key,
         } => {
             commands::daemon::run(
                 port,
@@ -171,9 +218,13 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 api_socket.as_deref(),
                 config.as_deref(),
                 log_level.as_deref(),
+                tls_cert.as_deref(),
+                tls_key.as_deref(),
             )
             .await
         }
+
+        Command::TlsGen { output } => commands::tls_gen::run(output.as_deref()),
 
         Command::Version => {
             println!("extender {}", env!("CARGO_PKG_VERSION"));
@@ -302,12 +353,16 @@ mod tests {
                 api_socket,
                 config,
                 log_level,
+                tls_cert,
+                tls_key,
             } => {
                 assert!(port.is_none());
                 assert!(listen.is_none());
                 assert!(api_socket.is_none());
                 assert!(config.is_none());
                 assert!(log_level.is_none());
+                assert!(tls_cert.is_none());
+                assert!(tls_key.is_none());
             }
             _ => panic!("expected Daemon command"),
         }
@@ -337,6 +392,7 @@ mod tests {
                 api_socket,
                 config,
                 log_level,
+                ..
             } => {
                 assert_eq!(port, Some(5000));
                 assert_eq!(listen.as_deref(), Some("0.0.0.0"));
@@ -376,6 +432,87 @@ mod tests {
     fn test_default_format() {
         let cli = Cli::try_parse_from(["extender", "version"]).unwrap();
         assert_eq!(cli.format, OutputFormat::Human);
+    }
+
+    #[test]
+    fn test_parse_discover() {
+        let cli = Cli::try_parse_from(["extender", "discover"]).unwrap();
+        assert!(matches!(cli.command, Command::Discover { timeout: None }));
+    }
+
+    #[test]
+    fn test_parse_discover_with_timeout() {
+        let cli = Cli::try_parse_from(["extender", "discover", "--timeout", "5"]).unwrap();
+        match cli.command {
+            Command::Discover { timeout } => assert_eq!(timeout, Some(5)),
+            _ => panic!("expected Discover command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_daemon_with_tls() {
+        let cli = Cli::try_parse_from([
+            "extender",
+            "daemon",
+            "--tls-cert",
+            "/path/to/cert.pem",
+            "--tls-key",
+            "/path/to/key.pem",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Daemon {
+                tls_cert, tls_key, ..
+            } => {
+                assert_eq!(tls_cert.as_deref(), Some("/path/to/cert.pem"));
+                assert_eq!(tls_key.as_deref(), Some("/path/to/key.pem"));
+            }
+            _ => panic!("expected Daemon command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_list_with_tls() {
+        let cli = Cli::try_parse_from([
+            "extender",
+            "list",
+            "--remote",
+            "server",
+            "--tls",
+            "--tls-ca",
+            "/path/to/ca.pem",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::List {
+                remote,
+                tls,
+                tls_ca,
+                ..
+            } => {
+                assert_eq!(remote.as_deref(), Some("server"));
+                assert!(tls);
+                assert_eq!(tls_ca.as_deref(), Some("/path/to/ca.pem"));
+            }
+            _ => panic!("expected List command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_tls_gen() {
+        let cli = Cli::try_parse_from(["extender", "tls-gen"]).unwrap();
+        assert!(matches!(cli.command, Command::TlsGen { output: None }));
+    }
+
+    #[test]
+    fn test_parse_tls_gen_with_output() {
+        let cli = Cli::try_parse_from(["extender", "tls-gen", "--output", "/tmp/certs"]).unwrap();
+        match cli.command {
+            Command::TlsGen { output } => {
+                assert_eq!(output.as_deref(), Some("/tmp/certs"));
+            }
+            _ => panic!("expected TlsGen command"),
+        }
     }
 
     #[test]

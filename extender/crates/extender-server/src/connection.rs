@@ -3,11 +3,14 @@
 //! Each inbound TCP connection is handled here. The handler reads the
 //! first discovery-phase message to determine whether the client wants
 //! a device list or an import, then dispatches accordingly.
+//!
+//! The handler is generic over `AsyncRead + AsyncWrite + Unpin` so it
+//! works with both plain `TcpStream` and `TlsStream<TcpStream>`.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::net::TcpStream;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use extender_protocol::codec::{read_op_message, write_op_message};
 use extender_protocol::{OpMessage, OpRepDevlist, OpRepImport};
@@ -16,17 +19,19 @@ use crate::error::ServerError;
 use crate::export::ExportRegistry;
 use crate::session::DeviceSession;
 
-/// Handle one inbound TCP connection.
+/// Handle one inbound connection (plain TCP or TLS).
 ///
 /// Reads the first discovery-phase message and dispatches to the
 /// appropriate handler:
 /// - `OP_REQ_DEVLIST` -> list exported devices, close connection
 /// - `OP_REQ_IMPORT` -> import a device, enter URB forwarding loop
-pub async fn handle_connection(
-    mut stream: TcpStream,
+pub async fn handle_connection<S>(
+    mut stream: S,
     registry: Arc<ExportRegistry>,
     peer: std::net::SocketAddr,
-) {
+) where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
     tracing::info!(%peer, "new connection");
 
     let msg =
@@ -92,8 +97,8 @@ pub async fn handle_connection(
 
 /// Handle an OP_REQ_DEVLIST: enumerate the export registry and send back
 /// the device list.
-async fn handle_devlist(
-    stream: &mut TcpStream,
+async fn handle_devlist<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: &mut S,
     registry: &ExportRegistry,
 ) -> Result<(), ServerError> {
     let devices = registry.list_devices().await?;
@@ -112,8 +117,8 @@ async fn handle_devlist(
 /// Returns `Ok(Some((handle, session_id)))` if the import succeeded and the
 /// connection should continue into the URB phase. Returns `Ok(None)` if the
 /// import was rejected (error reply sent to client). Returns `Err` on I/O errors.
-async fn handle_import(
-    stream: &mut TcpStream,
+async fn handle_import<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: &mut S,
     registry: &ExportRegistry,
     bus_id: &str,
 ) -> Result<Option<(Arc<crate::handle::ManagedDevice>, crate::export::SessionId)>, ServerError> {

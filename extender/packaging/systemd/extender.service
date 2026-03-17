@@ -1,0 +1,37 @@
+[Unit]
+Description=Extender - USB/IP device sharing daemon
+Documentation=https://github.com/calibrae/extender
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/extender daemon
+Restart=on-failure
+RestartSec=5
+User=extender
+Group=extender
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+# Allow binding to USB/IP port
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Runtime directory for socket and PID file
+RuntimeDirectory=extender
+RuntimeDirectoryMode=0755
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=extender
+
+[Install]
+WantedBy=multi-user.target

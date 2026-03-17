@@ -18,13 +18,27 @@ pub async fn run(
     _local: bool,
     remote: Option<&str>,
     port: Option<u16>,
+    tls: bool,
+    tls_ca: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(host) = remote {
         // List remote devices — connect directly to remote USB/IP server via TCP.
         // This does NOT require a local daemon.
         let port = port.unwrap_or(DEFAULT_PORT);
         let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
-        let remote_devices = extender_client::remote::list_remote_devices(addr).await?;
+
+        let remote_devices = if tls {
+            let tls_config = extender_client::TlsClientConfig {
+                ca_path: tls_ca.map(|s| s.to_owned()),
+                client_cert_path: None,
+                client_key_path: None,
+                server_name: Some(host.to_owned()),
+            };
+            extender_client::remote::list_remote_devices_tls(addr, &tls_config).await?
+        } else {
+            extender_client::remote::list_remote_devices(addr).await?
+        };
+
         let devices: Vec<DeviceInfo> = remote_devices
             .iter()
             .map(|d| DeviceInfo {

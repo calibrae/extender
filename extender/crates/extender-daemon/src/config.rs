@@ -13,6 +13,7 @@ pub struct Config {
     pub client: ClientConfig,
     pub daemon: DaemonConfig,
     pub security: SecurityConfig,
+    pub tls: TlsConfig,
 }
 
 /// Server-side settings.
@@ -22,6 +23,10 @@ pub struct ServerConfig {
     pub listen_address: String,
     pub port: u16,
     pub max_connections: u32,
+    /// Path to PEM certificate file for TLS.
+    pub tls_cert: Option<String>,
+    /// Path to PEM private key file for TLS.
+    pub tls_key: Option<String>,
 }
 
 /// Client-side settings.
@@ -41,15 +46,48 @@ pub struct DaemonConfig {
     pub log_format: String,
     pub drop_user: Option<String>,
     pub drop_group: Option<String>,
+    /// Enable mDNS/DNS-SD service advertisement. Defaults to true when the
+    /// listen address is not localhost.
+    pub mdns_enabled: bool,
 }
 
 /// Security / device filtering settings.
+///
+/// Device ACL patterns use the `"VID:PID"` format where each component is
+/// either a 4-digit hex value or `"*"` for wildcard matching.
+///
+/// # TOML example
+///
+/// ```toml
+/// [security]
+/// allowed_devices = []           # empty = all allowed
+/// denied_devices = ["0bda:*"]    # block all Realtek devices
+/// ```
+///
+/// - If `allowed_devices` is empty, all devices are allowed (unless denied).
+/// - If `allowed_devices` is non-empty, a device must match at least one pattern.
+/// - If a device matches any `denied_devices` pattern, it is denied (deny takes priority).
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 #[derive(Default)]
 pub struct SecurityConfig {
     pub allowed_devices: Vec<String>,
     pub denied_devices: Vec<String>,
+}
+
+/// TLS configuration for encrypted USB/IP connections.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+#[derive(Default)]
+pub struct TlsConfig {
+    /// Path to PEM certificate file (server cert).
+    pub cert: Option<String>,
+    /// Path to PEM private key file (server key).
+    pub key: Option<String>,
+    /// Path to CA certificate for client verification (mTLS).
+    pub ca: Option<String>,
+    /// If true, reject non-TLS connections (default: false).
+    pub require_tls: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +100,8 @@ impl Default for ServerConfig {
             listen_address: "127.0.0.1".to_string(),
             port: 3240,
             max_connections: 16,
+            tls_cert: None,
+            tls_key: None,
         }
     }
 }
@@ -97,6 +137,7 @@ impl Default for DaemonConfig {
             log_format: "text".to_string(),
             drop_user: None,
             drop_group: None,
+            mdns_enabled: true,
         }
     }
 }
@@ -170,6 +211,7 @@ impl Config {
         self.client = other.client.clone();
         self.daemon = other.daemon.clone();
         self.security = other.security.clone();
+        self.tls = other.tls.clone();
     }
 
     /// Apply environment variable overrides.
@@ -193,6 +235,22 @@ impl Config {
         if let Ok(val) = std::env::var("EXTENDER_LOG_LEVEL") {
             debug!("EXTENDER_LOG_LEVEL override: {}", val);
             self.daemon.log_level = val;
+        }
+        if let Ok(val) = std::env::var("EXTENDER_MDNS") {
+            debug!("EXTENDER_MDNS override: {}", val);
+            self.daemon.mdns_enabled = val == "1" || val.eq_ignore_ascii_case("true");
+        }
+        if let Ok(val) = std::env::var("EXTENDER_TLS_CERT") {
+            debug!("EXTENDER_TLS_CERT override: {}", val);
+            self.server.tls_cert = Some(val);
+        }
+        if let Ok(val) = std::env::var("EXTENDER_TLS_KEY") {
+            debug!("EXTENDER_TLS_KEY override: {}", val);
+            self.server.tls_key = Some(val);
+        }
+        if let Ok(val) = std::env::var("EXTENDER_TLS_CA") {
+            debug!("EXTENDER_TLS_CA override: {}", val);
+            self.tls.ca = Some(val);
         }
     }
 }
@@ -301,5 +359,45 @@ port = 4000
     fn test_load_nonexistent_file() {
         let result = Config::load_file("/nonexistent/path/config.toml");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_default_tls_config() {
+        let cfg = Config::default();
+        assert!(cfg.server.tls_cert.is_none());
+        assert!(cfg.server.tls_key.is_none());
+        assert!(cfg.tls.ca.is_none());
+        assert!(!cfg.tls.require_tls);
+    }
+
+    #[test]
+    fn test_tls_toml_parsing() {
+        let toml_str = r#"
+[server]
+tls_cert = "/path/to/cert.pem"
+tls_key = "/path/to/key.pem"
+
+[tls]
+ca = "/path/to/ca.pem"
+require_tls = true
+"#;
+        let cfg: Config = toml::from_str(toml_str).unwrap();
+        assert_eq!(cfg.server.tls_cert, Some("/path/to/cert.pem".to_string()));
+        assert_eq!(cfg.server.tls_key, Some("/path/to/key.pem".to_string()));
+        assert_eq!(cfg.tls.ca, Some("/path/to/ca.pem".to_string()));
+        assert!(cfg.tls.require_tls);
+    }
+
+    #[test]
+    fn test_tls_toml_partial() {
+        let toml_str = r#"
+[server]
+tls_cert = "/path/to/cert.pem"
+"#;
+        let cfg: Config = toml::from_str(toml_str).unwrap();
+        assert_eq!(cfg.server.tls_cert, Some("/path/to/cert.pem".to_string()));
+        assert!(cfg.server.tls_key.is_none());
+        assert!(cfg.tls.ca.is_none());
+        assert!(!cfg.tls.require_tls);
     }
 }
