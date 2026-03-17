@@ -13,6 +13,7 @@
 pub mod discover;
 pub mod engine;
 pub mod error;
+pub mod mass_storage;
 pub mod reconnect;
 pub mod remote;
 pub mod tls;

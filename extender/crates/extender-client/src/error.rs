@@ -58,4 +58,8 @@ pub enum ClientError {
     /// Error parsing VHCI status file.
     #[error("failed to parse VHCI status: {reason}")]
     VhciParseError { reason: String },
+
+    /// A USB Mass Storage protocol error.
+    #[error("mass storage error: {0}")]
+    MassStorage(String),
 }
