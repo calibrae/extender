@@ -6,6 +6,8 @@
     <ApplicationIcon>extender.ico</ApplicationIcon>
     <AssemblyName>ExtenderTray</AssemblyName>
     <RootNamespace>ExtenderTray</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
