@@ -168,9 +168,17 @@ Implements USB/IP protocol v1.1.1 per the [Linux kernel specification](https://d
 
 | | Server (export) | Client (import) |
 |---|---|---|
-| **macOS** | 13+ with root | Planned (DriverKit) |
-| **Linux** | Any with libusb | `vhci_hcd` kernel module |
-| **Windows** | 10 21H2+ with libusb | Planned (usbip-win2 UDE) |
+| **macOS** | 13+ with root | Pending Apple DriverKit entitlement approval |
+| **Linux** | Any with libusb | `vhci_hcd` kernel module. It just works.™ |
+| **Windows** | 10 21H2+ with libusb | Via usbip-win2 UDE driver (Microsoft-signed) |
+
+### A note on macOS client support
+
+macOS client import (making remote USB devices appear locally) requires a DriverKit system extension. DriverKit is Apple's framework for userspace drivers — the secure, modern replacement for kernel extensions. It's the right way to do it.
+
+Unfortunately, Apple requires developers to request special entitlements to ship DriverKit extensions, even for open-source projects. Our request has been submitted. We're waiting.
+
+In the meantime: macOS works great as a **server** (exporting USB devices to other machines). For **importing** devices, use Linux. It just works.™
 
 ## License
 
