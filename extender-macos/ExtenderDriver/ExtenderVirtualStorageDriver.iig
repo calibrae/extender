@@ -1,0 +1,16 @@
+#ifndef ExtenderVirtualStorageDriver_h
+#define ExtenderVirtualStorageDriver_h
+
+#include <Availability.h>
+#include <DriverKit/IOService.iig>
+
+class ExtenderVirtualStorageDriver : public IOService
+{
+public:
+    virtual bool init() override;
+    virtual kern_return_t Start(IOService * provider) override;
+    virtual kern_return_t Stop(IOService * provider) override;
+    virtual kern_return_t NewUserClient(uint32_t type, IOUserClient ** userClient) override;
+};
+
+#endif

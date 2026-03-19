@@ -1,0 +1,482 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */; };
+		389ABF34C83E244B51C633DE /* ExtenderVirtualStorageDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = 1BA015C5B885889CD863D40F /* ExtenderVirtualStorageDriver.iig */; };
+		451ACEDB31AAC36C11820B5B /* ExtenderStorageUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = 1185BCE43ACB890850BBB05B /* ExtenderStorageUserClient.iig */; };
+		7084B27B48228E2E52B3E918 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31AF3260293E558E65BACF66 /* MenuBarView.swift */; };
+		A2848EA9A1F723CEDE8E12D1 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = DD9B30EF17F809EB53FC1CC7 /* README.md */; };
+		B7773A46D1DCF47D90A0F935 /* ExtenderStorageUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FCC602629AF548B91D68345A /* ExtenderStorageUserClient.cpp */; };
+		E4A2CF15E9A0765B9943524C /* ExtenderDriver.systemextension in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E59395184A7D6CE71D2553CF /* ExtenderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07BF47CF49273D79BE91B38C /* ExtenderApp.swift */; };
+		F5C3BD990D339317B9CBF39E /* DaemonManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */; };
+		F96F6874A7121BF2B3EF737D /* ExtenderVirtualStorageDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F804198EFB55465DA6498955 /* ExtenderVirtualStorageDriver.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F57B9C712FA75708F5AACE76 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9B7EC1E512EE027B9C11747E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E816EDC4408CAC7830885AA7;
+			remoteInfo = ExtenderDriver;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		14E09FC6992BDBCE01818264 /* Embed Dependencies */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E4A2CF15E9A0765B9943524C /* ExtenderDriver.systemextension in Embed Dependencies */,
+			);
+			name = "Embed Dependencies";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		07BF47CF49273D79BE91B38C /* ExtenderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtenderApp.swift; sourceTree = "<group>"; };
+		07DF7D2CA1203D80775A2B97 /* ExtenderDriver.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExtenderDriver.entitlements; sourceTree = "<group>"; };
+		1185BCE43ACB890850BBB05B /* ExtenderStorageUserClient.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderStorageUserClient.iig; sourceTree = "<group>"; };
+		1BA015C5B885889CD863D40F /* ExtenderVirtualStorageDriver.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualStorageDriver.iig; sourceTree = "<group>"; };
+		27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = ExtenderDriver.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
+		31AF3260293E558E65BACF66 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		79881657B66319B872F96432 /* ExtenderApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExtenderApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONRPCClient.swift; sourceTree = "<group>"; };
+		DD9B30EF17F809EB53FC1CC7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonManager.swift; sourceTree = "<group>"; };
+		F804198EFB55465DA6498955 /* ExtenderVirtualStorageDriver.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualStorageDriver.cpp; sourceTree = "<group>"; };
+		FB14EE68AEE1D8578D333CBC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FCC602629AF548B91D68345A /* ExtenderStorageUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderStorageUserClient.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		20442C828A13243298A069A8 /* ExtenderBridge */ = {
+			isa = PBXGroup;
+			children = (
+				E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */,
+				B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */,
+			);
+			path = ExtenderBridge;
+			sourceTree = "<group>";
+		};
+		33F4AE9F1CA0D82CC8A01C46 /* ExtenderDriver */ = {
+			isa = PBXGroup;
+			children = (
+				07DF7D2CA1203D80775A2B97 /* ExtenderDriver.entitlements */,
+				FCC602629AF548B91D68345A /* ExtenderStorageUserClient.cpp */,
+				1185BCE43ACB890850BBB05B /* ExtenderStorageUserClient.iig */,
+				F804198EFB55465DA6498955 /* ExtenderVirtualStorageDriver.cpp */,
+				1BA015C5B885889CD863D40F /* ExtenderVirtualStorageDriver.iig */,
+				FB14EE68AEE1D8578D333CBC /* Info.plist */,
+				DD9B30EF17F809EB53FC1CC7 /* README.md */,
+			);
+			path = ExtenderDriver;
+			sourceTree = "<group>";
+		};
+		57A23556A9F3A877F8912255 = {
+			isa = PBXGroup;
+			children = (
+				935ED25BE951FDA9B9277436 /* ExtenderApp */,
+				33F4AE9F1CA0D82CC8A01C46 /* ExtenderDriver */,
+				D6662E3F1675691DDD3EA7DF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		935ED25BE951FDA9B9277436 /* ExtenderApp */ = {
+			isa = PBXGroup;
+			children = (
+				E62088588C9B3E5C4060288B /* Sources */,
+			);
+			path = ExtenderApp;
+			sourceTree = "<group>";
+		};
+		D6662E3F1675691DDD3EA7DF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				79881657B66319B872F96432 /* ExtenderApp.app */,
+				27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E62088588C9B3E5C4060288B /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				FDD413A18C783051E513B50C /* ExtenderApp */,
+				20442C828A13243298A069A8 /* ExtenderBridge */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		FDD413A18C783051E513B50C /* ExtenderApp */ = {
+			isa = PBXGroup;
+			children = (
+				07BF47CF49273D79BE91B38C /* ExtenderApp.swift */,
+				31AF3260293E558E65BACF66 /* MenuBarView.swift */,
+			);
+			path = ExtenderApp;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CDC16EFD2D9812C0911310FD /* ExtenderApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DC324A86EF5F8FBF61D96908 /* Build configuration list for PBXNativeTarget "ExtenderApp" */;
+			buildPhases = (
+				3512768629D810E806F90BD4 /* Sources */,
+				14E09FC6992BDBCE01818264 /* Embed Dependencies */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				23D7C9735E6200B92808441B /* PBXTargetDependency */,
+			);
+			name = ExtenderApp;
+			packageProductDependencies = (
+			);
+			productName = ExtenderApp;
+			productReference = 79881657B66319B872F96432 /* ExtenderApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E816EDC4408CAC7830885AA7 /* ExtenderDriver */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0B95A056017B40820F87C2F /* Build configuration list for PBXNativeTarget "ExtenderDriver" */;
+			buildPhases = (
+				991D7B24AC85CA30EAA5D68C /* Sources */,
+				6E951FA49B627D12C400CB5B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ExtenderDriver;
+			packageProductDependencies = (
+			);
+			productName = ExtenderDriver;
+			productReference = 27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */;
+			productType = "com.apple.product-type.system-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9B7EC1E512EE027B9C11747E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					CDC16EFD2D9812C0911310FD = {
+						DevelopmentTeam = XJQQCN392F;
+						ProvisioningStyle = Automatic;
+					};
+					E816EDC4408CAC7830885AA7 = {
+						DevelopmentTeam = XJQQCN392F;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 22A636CD361F7B83A25330E7 /* Build configuration list for PBXProject "Extender" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 57A23556A9F3A877F8912255;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D6662E3F1675691DDD3EA7DF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CDC16EFD2D9812C0911310FD /* ExtenderApp */,
+				E816EDC4408CAC7830885AA7 /* ExtenderDriver */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6E951FA49B627D12C400CB5B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2848EA9A1F723CEDE8E12D1 /* README.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3512768629D810E806F90BD4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5C3BD990D339317B9CBF39E /* DaemonManager.swift in Sources */,
+				E59395184A7D6CE71D2553CF /* ExtenderApp.swift in Sources */,
+				3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */,
+				7084B27B48228E2E52B3E918 /* MenuBarView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		991D7B24AC85CA30EAA5D68C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7773A46D1DCF47D90A0F935 /* ExtenderStorageUserClient.cpp in Sources */,
+				451ACEDB31AAC36C11820B5B /* ExtenderStorageUserClient.iig in Sources */,
+				F96F6874A7121BF2B3EF737D /* ExtenderVirtualStorageDriver.cpp in Sources */,
+				389ABF34C83E244B51C633DE /* ExtenderVirtualStorageDriver.iig in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		23D7C9735E6200B92808441B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E816EDC4408CAC7830885AA7 /* ExtenderDriver */;
+			targetProxy = F57B9C712FA75708F5AACE76 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		527DA248B4F77104A257F4DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
+				INFOPLIST_FILE = ExtenderDriver/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SYSTEM_EXTENSION_API_ENABLED = YES;
+			};
+			name = Debug;
+		};
+		55D0147852318B4FFA9CD95E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = XJQQCN392F;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		67E933F289AE1286BA32ACF0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
+				INFOPLIST_FILE = ExtenderDriver/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SYSTEM_EXTENSION_API_ENABLED = YES;
+			};
+			name = Release;
+		};
+		6D9B9F89232E0A77187A0268 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"CFBundleDisplayName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender;
+				SDKROOT = macosx;
+				SYSTEM_EXTENSION_API_ENABLED = YES;
+			};
+			name = Debug;
+		};
+		9A7086943A708DEB992CE650 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"CFBundleDisplayName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender;
+				SDKROOT = macosx;
+				SYSTEM_EXTENSION_API_ENABLED = YES;
+			};
+			name = Release;
+		};
+		AA20C7E18D9D9AFCB6855DD5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = XJQQCN392F;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		22A636CD361F7B83A25330E7 /* Build configuration list for PBXProject "Extender" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA20C7E18D9D9AFCB6855DD5 /* Debug */,
+				55D0147852318B4FFA9CD95E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D0B95A056017B40820F87C2F /* Build configuration list for PBXNativeTarget "ExtenderDriver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				527DA248B4F77104A257F4DF /* Debug */,
+				67E933F289AE1286BA32ACF0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DC324A86EF5F8FBF61D96908 /* Build configuration list for PBXNativeTarget "ExtenderApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D9B9F89232E0A77187A0268 /* Debug */,
+				9A7086943A708DEB992CE650 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9B7EC1E512EE027B9C11747E /* Project object */;
+}

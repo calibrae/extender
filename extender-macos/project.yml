@@ -1,0 +1,53 @@
+name: Extender
+options:
+  bundleIdPrefix: com.calibrae
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: XJQQCN392F
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  ExtenderApp:
+    type: application
+    platform: macOS
+    sources:
+      - ExtenderApp/Sources/ExtenderApp
+      - ExtenderApp/Sources/ExtenderBridge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender
+        INFOPLIST_VALUES:
+          CFBundleName: Extender
+          CFBundleDisplayName: Extender
+          LSUIElement: true
+          LSMinimumSystemVersion: "13.0"
+          NSHumanReadableCopyright: "Copyright 2026 calibrae. MIT OR Apache-2.0."
+        SYSTEM_EXTENSION_API_ENABLED: true
+        CODE_SIGN_ENTITLEMENTS: ExtenderApp/Entitlements/ExtenderApp.entitlements
+    dependencies:
+      - target: ExtenderDriver
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+
+  ExtenderDriver:
+    type: system-extension
+    platform: macOS
+    sources:
+      - ExtenderDriver
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender.driver
+        SKIP_INSTALL: true
+        CODE_SIGN_ENTITLEMENTS: ExtenderDriver/ExtenderDriver.entitlements
+        CLANG_CXX_LANGUAGE_STANDARD: c++20
+        SYSTEM_EXTENSION_API_ENABLED: true
+        DRIVERKIT_DEPLOYMENT_TARGET: "22.0"
+    info:
+      path: ExtenderDriver/Info.plist
