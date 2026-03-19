@@ -48,7 +48,12 @@ kern_return_t IMPL(ExtenderStorageUserClient, Stop)
     return Stop(provider, SUPERDISPATCH);
 }
 
-kern_return_t IMPL(ExtenderStorageUserClient, ExternalMethod)
+kern_return_t ExtenderStorageUserClient::ExternalMethod(
+    uint64_t selector,
+    IOUserClientMethodArguments *arguments,
+    const IOUserClientMethodDispatch *dispatch,
+    OSObject *target,
+    void *reference)
 {
     os_log(OS_LOG_DEFAULT, LOG_PREFIX ": ExternalMethod selector=%llu", selector);
 

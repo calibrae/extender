@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A5AF50D4201EBFCCB9A5960 /* DriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3A7357C09D505526117661C1 /* DriverKit.framework */; };
 		3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */; };
 		389ABF34C83E244B51C633DE /* ExtenderVirtualStorageDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = 1BA015C5B885889CD863D40F /* ExtenderVirtualStorageDriver.iig */; };
 		451ACEDB31AAC36C11820B5B /* ExtenderStorageUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = 1185BCE43ACB890850BBB05B /* ExtenderStorageUserClient.iig */; };
@@ -50,6 +51,7 @@
 		1BA015C5B885889CD863D40F /* ExtenderVirtualStorageDriver.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualStorageDriver.iig; sourceTree = "<group>"; };
 		27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = ExtenderDriver.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 		31AF3260293E558E65BACF66 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		3A7357C09D505526117661C1 /* DriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = DriverKit.framework; sourceTree = "<group>"; };
 		79881657B66319B872F96432 /* ExtenderApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExtenderApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONRPCClient.swift; sourceTree = "<group>"; };
 		DD9B30EF17F809EB53FC1CC7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -58,6 +60,17 @@
 		FB14EE68AEE1D8578D333CBC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FCC602629AF548B91D68345A /* ExtenderStorageUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderStorageUserClient.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		58510CC49441125782AE5B32 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A5AF50D4201EBFCCB9A5960 /* DriverKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		20442C828A13243298A069A8 /* ExtenderBridge */ = {
@@ -88,6 +101,7 @@
 			children = (
 				935ED25BE951FDA9B9277436 /* ExtenderApp */,
 				33F4AE9F1CA0D82CC8A01C46 /* ExtenderDriver */,
+				C42A013EE4A973EEEC1BEDCE /* Frameworks */,
 				D6662E3F1675691DDD3EA7DF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -98,6 +112,14 @@
 				E62088588C9B3E5C4060288B /* Sources */,
 			);
 			path = ExtenderApp;
+			sourceTree = "<group>";
+		};
+		C42A013EE4A973EEEC1BEDCE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3A7357C09D505526117661C1 /* DriverKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		D6662E3F1675691DDD3EA7DF /* Products */ = {
@@ -155,6 +177,7 @@
 			buildPhases = (
 				991D7B24AC85CA30EAA5D68C /* Sources */,
 				6E951FA49B627D12C400CB5B /* Resources */,
+				58510CC49441125782AE5B32 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -258,13 +281,17 @@
 				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
 				INFOPLIST_FILE = ExtenderDriver/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
-				SDKROOT = macosx;
+				SDKROOT = driverkit;
 				SKIP_INSTALL = YES;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
 			};
@@ -335,13 +362,17 @@
 				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
 				INFOPLIST_FILE = ExtenderDriver/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
-				SDKROOT = macosx;
+				SDKROOT = driverkit;
 				SKIP_INSTALL = YES;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
 			};
@@ -353,7 +384,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"CFBundleDisplayName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
+				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"LSUIElement\": true, \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSMinimumSystemVersion\": \"13.0\", \"CFBundleDisplayName\": \"Extender\"]";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -370,7 +401,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"CFBundleDisplayName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
+				INFOPLIST_VALUES = "[\"CFBundleName\": \"Extender\", \"LSUIElement\": true, \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSMinimumSystemVersion\": \"13.0\", \"CFBundleDisplayName\": \"Extender\"]";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

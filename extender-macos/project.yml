@@ -49,5 +49,9 @@ targets:
         CLANG_CXX_LANGUAGE_STANDARD: c++20
         SYSTEM_EXTENSION_API_ENABLED: true
         DRIVERKIT_DEPLOYMENT_TARGET: "22.0"
+        SDKROOT: driverkit
+    dependencies:
+      - framework: DriverKit.framework
+        embed: false
     info:
       path: ExtenderDriver/Info.plist
