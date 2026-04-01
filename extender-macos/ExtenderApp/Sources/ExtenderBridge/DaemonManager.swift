@@ -141,6 +141,7 @@ public final class DaemonManager: ObservableObject {
     @Published public var remoteDevices: [RemoteDeviceInfo] = []
     @Published public var importedDevices: [ImportedDeviceInfo] = []
     @Published public var connectedServer: RemoteServer?
+    @Published public var extensionManager = SystemExtensionManager()
 
     private var daemonProcess: Process?
     private let client = DaemonClient()
@@ -209,6 +210,9 @@ public final class DaemonManager: ObservableObject {
 
     /// Try to connect to an already-running daemon.
     public func connectToExisting() async {
+        // Ensure the system extension is activated
+        extensionManager.activateExtension()
+
         do {
             let s: DaemonStatus = try await client.call(method: "get_status")
             status = s

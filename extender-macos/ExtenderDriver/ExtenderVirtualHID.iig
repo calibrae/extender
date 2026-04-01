@@ -2,16 +2,31 @@
 #define ExtenderVirtualHID_h
 
 #include <Availability.h>
-#include <DriverKit/IOService.iig>
+#include <HIDDriverKit/IOUserHIDDevice.iig>
 
-// Note: This should inherit from IOUserHIDDevice (HIDDriverKit) once that
-// framework is linked in the Xcode project. For now, stub as IOService.
-class ExtenderVirtualHID : public IOService
+class ExtenderVirtualHID : public IOUserHIDDevice
 {
 public:
     virtual bool init() override;
     virtual kern_return_t Start(IOService * provider) override;
     virtual kern_return_t Stop(IOService * provider) override;
+
+    virtual OSDictionary * newDeviceDescription() override;
+    virtual OSData * newReportDescriptor() override;
+
+    virtual kern_return_t getReport(
+        IOMemoryDescriptor * report,
+        IOHIDReportType reportType,
+        IOOptionBits options,
+        uint32_t completionTimeout,
+        OSAction * action) override;
+
+    virtual kern_return_t setReport(
+        IOMemoryDescriptor * report,
+        IOHIDReportType reportType,
+        IOOptionBits options,
+        uint32_t completionTimeout,
+        OSAction * action) override;
 };
 
-#endif /* ExtenderVirtualHID_h */
+#endif

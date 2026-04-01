@@ -28,6 +28,8 @@
 		AA00000CAA00000CAA00000C /* ExtenderVirtualSerial.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA10000CAA10000CAA10000C /* ExtenderVirtualSerial.iig */; };
 		AA00000DAA00000DAA00000D /* ExtenderVirtualAudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA10000DAA10000DAA10000D /* ExtenderVirtualAudio.cpp */; };
 		AA00000EAA00000EAA00000E /* ExtenderVirtualAudio.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA10000EAA10000EAA10000E /* ExtenderVirtualAudio.iig */; };
+		BB000002BB000002BB000002 /* HIDDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB000001BB000001BB000001 /* HIDDriverKit.framework */; };
+		CC000002CC000002CC000002 /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001CC000001CC000001 /* SystemExtensionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +82,8 @@
 		AA10000CAA10000CAA10000C /* ExtenderVirtualSerial.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualSerial.iig; sourceTree = "<group>"; };
 		AA10000DAA10000DAA10000D /* ExtenderVirtualAudio.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualAudio.cpp; sourceTree = "<group>"; };
 		AA10000EAA10000EAA10000E /* ExtenderVirtualAudio.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualAudio.iig; sourceTree = "<group>"; };
+		BB000001BB000001BB000001 /* HIDDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HIDDriverKit.framework; path = System/DriverKit/System/Library/Frameworks/HIDDriverKit.framework; sourceTree = SDKROOT; };
+		CC000001CC000001CC000001 /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A5AF50D4201EBFCCB9A5960 /* DriverKit.framework in Frameworks */,
+				BB000002BB000002BB000002 /* HIDDriverKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +104,7 @@
 			children = (
 				E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */,
 				B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */,
+				CC000001CC000001CC000001 /* SystemExtensionManager.swift */,
 			);
 			path = ExtenderBridge;
 			sourceTree = "<group>";
@@ -150,6 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				3A7357C09D505526117661C1 /* DriverKit.framework */,
+				BB000001BB000001BB000001 /* HIDDriverKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -271,6 +278,7 @@
 				E59395184A7D6CE71D2553CF /* ExtenderApp.swift in Sources */,
 				3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */,
 				7084B27B48228E2E52B3E918 /* MenuBarView.swift in Sources */,
+				CC000002CC000002CC000002 /* SystemExtensionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

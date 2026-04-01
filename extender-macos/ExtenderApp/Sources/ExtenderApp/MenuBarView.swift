@@ -40,21 +40,68 @@ struct MenuBarView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            Image(systemName: "cable.connector.horizontal")
-                .foregroundStyle(.blue)
-            Text("Extender")
-                .font(.headline)
-            Spacer()
-            Circle()
-                .fill(daemon.isRunning ? .green : .red)
-                .frame(width: 8, height: 8)
-            Text(daemon.isRunning ? "Running" : "Stopped")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "cable.connector.horizontal")
+                    .foregroundStyle(.blue)
+                Text("Extender")
+                    .font(.headline)
+                Spacer()
+                Circle()
+                    .fill(daemon.isRunning ? .green : .red)
+                    .frame(width: 8, height: 8)
+                Text(daemon.isRunning ? "Running" : "Stopped")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            extensionStatusView
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private var extensionStatusView: some View {
+        let ext = daemon.extensionManager
+        switch ext.extensionStatus {
+        case .unknown, .activated:
+            EmptyView()
+        case .activating:
+            HStack(spacing: 4) {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.6)
+                Text("Activating driver...")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        case .needsApproval:
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                Text(ext.statusMessage ?? "Approve in System Settings")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
+        case .failed(let message):
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+                Spacer()
+                Button("Retry") {
+                    ext.activateExtension()
+                }
+                .buttonStyle(.borderless)
+                .font(.caption2)
+            }
+        }
     }
 
     // MARK: - Device List
