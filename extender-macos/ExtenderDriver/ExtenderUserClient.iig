@@ -1,10 +1,10 @@
-#ifndef ExtenderStorageUserClient_h
-#define ExtenderStorageUserClient_h
+#ifndef ExtenderUserClient_h
+#define ExtenderUserClient_h
 
 #include <Availability.h>
 #include <DriverKit/IOUserClient.iig>
 
-class ExtenderStorageUserClient : public IOUserClient
+class ExtenderUserClient : public IOUserClient
 {
 public:
     virtual bool init() override;
@@ -18,4 +18,4 @@ public:
         void * reference) override;
 };
 
-#endif
+#endif /* ExtenderUserClient_h */

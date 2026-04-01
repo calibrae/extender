@@ -78,4 +78,9 @@ pub enum ClientError {
     /// A USB Audio Class protocol error.
     #[error("audio error: {0}")]
     Audio(String),
+
+    /// An IOKit error (macOS).
+    #[cfg(target_os = "macos")]
+    #[error("IOKit error (code {code}): {message}")]
+    IOKit { code: i32, message: String },
 }

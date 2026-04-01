@@ -26,6 +26,7 @@ struct RegistryEntry {
 ///
 /// On Linux, it interfaces with the vhci_hcd kernel module via sysfs.
 /// On Windows, it interfaces with the usbip-win2 UDE driver via IOCTLs.
+/// On macOS, it interfaces with the ExtenderDriver DriverKit extension via IOKit.
 /// On other platforms, attach/detach operations return `PlatformNotSupported`.
 pub struct ClientEngine {
     /// VHCI driver instance (Linux only).
@@ -36,8 +37,12 @@ pub struct ClientEngine {
     #[cfg(target_os = "windows")]
     vhci: crate::vhci_windows::WindowsVhciDriver,
 
+    /// VHCI driver instance (macOS only).
+    #[cfg(target_os = "macos")]
+    vhci: crate::vhci_macos::MacOSVhciDriver,
+
     /// Registry of imported devices, keyed by port number.
-    #[allow(dead_code)] // Used only on Linux/Windows
+    #[allow(dead_code)] // Used only on Linux/Windows/macOS
     registry: Mutex<HashMap<u32, RegistryEntry>>,
 }
 
@@ -68,10 +73,22 @@ impl ClientEngine {
         })
     }
 
+    /// Create a new ClientEngine on macOS.
+    ///
+    /// Opens the ExtenderDriver DriverKit extension for attach/detach operations.
+    #[cfg(target_os = "macos")]
+    pub fn new() -> Result<Self, ClientError> {
+        let vhci = crate::vhci_macos::MacOSVhciDriver::new()?;
+        Ok(ClientEngine {
+            vhci,
+            registry: Mutex::new(HashMap::new()),
+        })
+    }
+
     /// Create a new ClientEngine on unsupported platforms.
     ///
     /// Attach and detach operations will return `PlatformNotSupported`.
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     pub fn new() -> Result<Self, ClientError> {
         Ok(ClientEngine {
             registry: Mutex::new(HashMap::new()),
@@ -102,7 +119,7 @@ impl ClientEngine {
         busid: &str,
     ) -> Result<AttachedDevice, ClientError> {
         // Platform gate
-        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         {
             let _ = (addr, busid);
             Err(ClientError::PlatformNotSupported)
@@ -116,6 +133,11 @@ impl ClientEngine {
         #[cfg(target_os = "windows")]
         {
             self.attach_device_windows(addr, busid).await
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            self.attach_device_macos(addr, busid).await
         }
     }
 
@@ -278,12 +300,132 @@ impl ClientEngine {
         })
     }
 
+    /// macOS-specific attach implementation.
+    ///
+    /// On macOS, the client handles the USB/IP protocol in userspace and
+    /// forwards URBs to/from the DriverKit extension via IOKit UserClient calls.
+    #[cfg(target_os = "macos")]
+    async fn attach_device_macos(
+        &self,
+        addr: SocketAddr,
+        busid: &str,
+    ) -> Result<AttachedDevice, ClientError> {
+        use std::time::Duration;
+
+        use tokio::net::TcpStream;
+        use tokio::time::timeout;
+
+        use extender_protocol::codec::{read_op_message, write_op_message};
+        use extender_protocol::{OpMessage, OpReqImport};
+
+        use crate::vhci_macos::{device_type_from_usb, CONFIG_DEVICE_DESCRIPTOR};
+
+        /// Connect timeout in seconds.
+        const CONNECT_TIMEOUT_SECS: u64 = 5;
+
+        let busid_wire = extender_protocol::UsbDevice::busid_from_str(busid)
+            .map_err(|_| ClientError::InvalidBusId(busid.to_owned()))?;
+
+        let connect_timeout = Duration::from_secs(CONNECT_TIMEOUT_SECS);
+
+        // Connect with timeout
+        let stream = timeout(connect_timeout, TcpStream::connect(addr))
+            .await
+            .map_err(|_| ClientError::ConnectTimeout {
+                addr,
+                timeout_secs: CONNECT_TIMEOUT_SECS,
+            })?
+            .map_err(ClientError::Io)?;
+
+        let (mut reader, mut writer) = stream.into_split();
+
+        // Send OP_REQ_IMPORT
+        let req = OpMessage::ReqImport(OpReqImport { busid: busid_wire });
+        write_op_message(&mut writer, &req).await?;
+
+        // Read OP_REP_IMPORT
+        let reply = read_op_message(&mut reader).await?;
+
+        let device = match reply {
+            OpMessage::RepImport(rep) => {
+                if rep.status != 0 {
+                    return Err(ClientError::ImportRejected {
+                        busid: busid.to_owned(),
+                        status: rep.status,
+                    });
+                }
+                rep.device.ok_or(ClientError::ImportMissingDevice)?
+            }
+            _ => {
+                return Err(ClientError::Protocol(
+                    extender_protocol::ProtocolError::InvalidOpCode(0),
+                ));
+            }
+        };
+
+        // Determine device type from USB descriptors.
+        let interface_classes: Vec<u8> =
+            device.interfaces.iter().map(|i| i.interface_class).collect();
+        let device_type = device_type_from_usb(device.device_class, &interface_classes);
+
+        // Use devid as the virtual device identifier.
+        let devid = (device.busnum << 16) | device.devnum;
+        let speed = device.speed;
+
+        // Create the virtual device in the DriverKit extension.
+        self.vhci.create_device(device_type, devid)?;
+
+        // Configure with the USB device descriptor.
+        // Build a minimal 18-byte USB device descriptor from the protocol data.
+        let desc = build_device_descriptor(&device);
+        if let Err(e) = self.vhci.configure_device(devid, CONFIG_DEVICE_DESCRIPTOR, &desc) {
+            // Clean up on failure.
+            let _ = self.vhci.destroy_device(devid);
+            return Err(e);
+        }
+
+        tracing::info!(
+            devid = devid,
+            busid = busid,
+            server = %addr,
+            device_type = device_type,
+            speed = speed,
+            "device attached via macOS DriverKit"
+        );
+
+        // Record in registry. We use devid as the "port" on macOS since there
+        // are no fixed VHCI port numbers — the driver assigns device IDs.
+        let entry = RegistryEntry {
+            server_addr: addr,
+            busid: busid.to_owned(),
+            id_vendor: device.id_vendor,
+            id_product: device.id_product,
+            speed,
+        };
+        self.registry.lock().unwrap().insert(devid, entry);
+
+        // TODO: Spawn a background tokio task for ongoing URB forwarding:
+        // - Poll get_pending_output() for requests from macOS -> send as USB/IP URBs
+        // - Receive USB/IP URB responses from server -> call submit_input()
+        // This requires the TCP stream to remain open and is deferred to a
+        // future change that adds the URB forwarding loop.
+
+        Ok(AttachedDevice {
+            port: devid,
+            busid: busid.to_owned(),
+            server_addr: addr,
+            id_vendor: device.id_vendor,
+            id_product: device.id_product,
+            speed,
+        })
+    }
+
     /// Detach a previously imported device by port number.
     ///
     /// Writes to the vhci_hcd detach sysfs file and removes the device
     /// from the local registry.
     pub async fn detach_device(&self, port: u32) -> Result<(), ClientError> {
-        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         {
             let _ = port;
             Err(ClientError::PlatformNotSupported)
@@ -325,6 +467,22 @@ impl ClientEngine {
             tracing::info!(port = port, "device detached via Windows VHCI");
             Ok(())
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            // On macOS, port is the device ID.
+            if !self.registry.lock().unwrap().contains_key(&port) {
+                return Err(ClientError::PortNotAttached { port });
+            }
+
+            self.vhci.destroy_device(port)?;
+
+            // Remove from registry
+            self.registry.lock().unwrap().remove(&port);
+
+            tracing::info!(devid = port, "device detached via macOS DriverKit");
+            Ok(())
+        }
     }
 
     /// Get the list of currently imported devices.
@@ -332,7 +490,7 @@ impl ClientEngine {
     /// Parses the vhci_hcd status file and cross-references with the local
     /// registry to provide server address and bus ID information.
     pub fn get_imported_devices(&self) -> Result<Vec<ImportedDevice>, ClientError> {
-        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         {
             Err(ClientError::PlatformNotSupported)
         }
@@ -376,14 +534,65 @@ impl ClientEngine {
 
             Ok(devices)
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            use crate::types::PortStatus;
+
+            let registry = self.registry.lock().unwrap();
+
+            let imported: Vec<ImportedDevice> = registry
+                .iter()
+                .map(|(&devid, reg)| ImportedDevice {
+                    port: devid,
+                    status: PortStatus::InUse,
+                    speed: reg.speed,
+                    devid,
+                    server_addr: Some(reg.server_addr),
+                    busid: Some(reg.busid.clone()),
+                })
+                .collect();
+
+            Ok(imported)
+        }
     }
+}
+
+/// Build a standard 18-byte USB device descriptor from protocol device info.
+///
+/// This is used on macOS to configure the virtual device with the USB device
+/// descriptor received from the remote server.
+#[cfg(target_os = "macos")]
+fn build_device_descriptor(dev: &extender_protocol::UsbDevice) -> [u8; 18] {
+    let mut desc = [0u8; 18];
+    desc[0] = 18; // bLength
+    desc[1] = 0x01; // bDescriptorType = DEVICE
+    // bcdUSB: assume USB 2.0 unless super-speed
+    let bcd_usb: u16 = if dev.speed >= 5 { 0x0300 } else { 0x0200 };
+    desc[2] = bcd_usb as u8;
+    desc[3] = (bcd_usb >> 8) as u8;
+    desc[4] = dev.device_class;
+    desc[5] = dev.device_subclass;
+    desc[6] = dev.device_protocol;
+    desc[7] = 64; // bMaxPacketSize0
+    desc[8] = dev.id_vendor as u8;
+    desc[9] = (dev.id_vendor >> 8) as u8;
+    desc[10] = dev.id_product as u8;
+    desc[11] = (dev.id_product >> 8) as u8;
+    desc[12] = dev.bcd_device as u8;
+    desc[13] = (dev.bcd_device >> 8) as u8;
+    desc[14] = 0; // iManufacturer
+    desc[15] = 0; // iProduct
+    desc[16] = 0; // iSerialNumber
+    desc[17] = dev.num_configurations;
+    desc
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     #[tokio::test]
     async fn test_attach_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
@@ -392,7 +601,7 @@ mod tests {
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     #[tokio::test]
     async fn test_detach_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
@@ -400,7 +609,7 @@ mod tests {
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     #[test]
     fn test_get_imported_not_supported_on_unsupported_platform() {
         let engine = ClientEngine::new().unwrap();
@@ -442,5 +651,70 @@ mod tests {
             assert_eq!((code >> 2) & 0xFFF, func, "function number mismatch");
             assert_eq!(code & 0x3, 0, "METHOD_BUFFERED should be 0");
         }
+    }
+
+    // Cross-platform tests for macOS build_device_descriptor and device type detection.
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_build_device_descriptor_high_speed() {
+        let dev = extender_protocol::UsbDevice {
+            path: extender_protocol::UsbDevice::path_from_str("/sys/devices/usb1/1-1"),
+            busid: extender_protocol::UsbDevice::busid_from_str("1-1").unwrap(),
+            busnum: 1,
+            devnum: 2,
+            speed: 3, // high-speed
+            id_vendor: 0x1234,
+            id_product: 0x5678,
+            bcd_device: 0x0100,
+            device_class: 0x03,
+            device_subclass: 0x01,
+            device_protocol: 0x02,
+            configuration_value: 1,
+            num_configurations: 1,
+            num_interfaces: 0,
+            interfaces: vec![],
+        };
+
+        let desc = build_device_descriptor(&dev);
+        assert_eq!(desc[0], 18); // bLength
+        assert_eq!(desc[1], 0x01); // bDescriptorType
+        assert_eq!(desc[2], 0x00); // bcdUSB low
+        assert_eq!(desc[3], 0x02); // bcdUSB high (USB 2.0)
+        assert_eq!(desc[4], 0x03); // bDeviceClass
+        assert_eq!(desc[5], 0x01); // bDeviceSubClass
+        assert_eq!(desc[6], 0x02); // bDeviceProtocol
+        assert_eq!(desc[7], 64); // bMaxPacketSize0
+        assert_eq!(desc[8], 0x34); // idVendor low
+        assert_eq!(desc[9], 0x12); // idVendor high
+        assert_eq!(desc[10], 0x78); // idProduct low
+        assert_eq!(desc[11], 0x56); // idProduct high
+        assert_eq!(desc[17], 1); // bNumConfigurations
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_build_device_descriptor_super_speed() {
+        let dev = extender_protocol::UsbDevice {
+            path: extender_protocol::UsbDevice::path_from_str("/sys/devices/usb1/1-1"),
+            busid: extender_protocol::UsbDevice::busid_from_str("1-1").unwrap(),
+            busnum: 1,
+            devnum: 1,
+            speed: 5, // super-speed
+            id_vendor: 0xAAAA,
+            id_product: 0xBBBB,
+            bcd_device: 0x0200,
+            device_class: 0x08,
+            device_subclass: 0x06,
+            device_protocol: 0x50,
+            configuration_value: 1,
+            num_configurations: 1,
+            num_interfaces: 0,
+            interfaces: vec![],
+        };
+
+        let desc = build_device_descriptor(&dev);
+        assert_eq!(desc[2], 0x00); // bcdUSB low
+        assert_eq!(desc[3], 0x03); // bcdUSB high (USB 3.0)
     }
 }

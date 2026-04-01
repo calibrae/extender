@@ -1,5 +1,4 @@
 import SwiftUI
-import ExtenderBridge
 
 @main
 struct ExtenderApp: App {

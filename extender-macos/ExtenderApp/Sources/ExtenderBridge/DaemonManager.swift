@@ -68,6 +68,68 @@ public struct DaemonStatus: Codable {
     }
 }
 
+/// A remote server discovered via mDNS or manually added.
+public struct RemoteServer: Identifiable, Hashable {
+    public let id: String  // host:port
+    public let host: String
+    public let port: UInt16
+    public let name: String?  // mDNS service name
+}
+
+/// A device available on a remote server.
+public struct RemoteDeviceInfo: Codable, Identifiable {
+    public let bus_id: String
+    public let vendor_id: UInt16
+    public let product_id: UInt16
+    public let device_class: UInt8
+    public let speed: String
+
+    public var id: String { bus_id }
+
+    public var vidPid: String {
+        String(format: "%04x:%04x", vendor_id, product_id)
+    }
+
+    public var speedDisplay: String {
+        switch speed {
+        case "low": return "1.5 Mbps"
+        case "full": return "12 Mbps"
+        case "high": return "480 Mbps"
+        case "super": return "5 Gbps"
+        default: return speed
+        }
+    }
+
+    public var deviceClassName: String {
+        switch device_class {
+        case 0x03: return "HID"
+        case 0x08: return "Storage"
+        case 0x02, 0x0A: return "Serial"
+        case 0x01: return "Audio"
+        case 0x09: return "Hub"
+        case 0xE0: return "Wireless"
+        case 0xEF: return "Misc"
+        default: return String(format: "0x%02X", device_class)
+        }
+    }
+}
+
+/// An imported (attached) device.
+public struct ImportedDeviceInfo: Codable, Identifiable {
+    public let port: UInt32
+    public let bus_id: String
+    public let host: String
+    public let vendor_id: UInt16?
+    public let product_id: UInt16?
+
+    public var id: UInt32 { port }
+
+    public var vidPid: String? {
+        guard let vid = vendor_id, let pid = product_id else { return nil }
+        return String(format: "%04x:%04x", vid, pid)
+    }
+}
+
 /// Manages the Extender daemon process and provides a high-level API.
 @MainActor
 public final class DaemonManager: ObservableObject {
@@ -76,6 +138,9 @@ public final class DaemonManager: ObservableObject {
     @Published public var exportedDevices: [ExportedDeviceInfo] = []
     @Published public var status: DaemonStatus?
     @Published public var lastError: String?
+    @Published public var remoteDevices: [RemoteDeviceInfo] = []
+    @Published public var importedDevices: [ImportedDeviceInfo] = []
+    @Published public var connectedServer: RemoteServer?
 
     private var daemonProcess: Process?
     private let client = DaemonClient()
@@ -136,6 +201,9 @@ public final class DaemonManager: ObservableObject {
         isRunning = false
         localDevices = []
         exportedDevices = []
+        remoteDevices = []
+        importedDevices = []
+        connectedServer = nil
         status = nil
     }
 
@@ -190,6 +258,63 @@ public final class DaemonManager: ObservableObject {
         } catch {
             lastError = "Unbind failed: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Import Operations
+
+    /// List devices available on a remote server.
+    public func listRemoteDevices(host: String, port: UInt16) async {
+        do {
+            remoteDevices = try await client.call(
+                method: "list_remote_devices",
+                params: ["host": host, "port": Int(port)]
+            )
+            connectedServer = RemoteServer(
+                id: "\(host):\(port)",
+                host: host,
+                port: port,
+                name: nil
+            )
+            lastError = nil
+        } catch {
+            lastError = "Failed to list remote devices: \(error.localizedDescription)"
+            remoteDevices = []
+            connectedServer = nil
+        }
+    }
+
+    /// Attach (import) a remote device.
+    public func attachDevice(host: String, port: UInt16, busId: String) async {
+        do {
+            let _: [String: AnyCodable] = try await client.call(
+                method: "attach_device",
+                params: ["host": host, "port": Int(port), "bus_id": busId]
+            )
+            // Refresh remote device list and imported devices
+            await listRemoteDevices(host: host, port: port)
+            await refresh()
+        } catch {
+            lastError = "Attach failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Detach (remove) an imported device.
+    public func detachDevice(port: UInt32) async {
+        do {
+            let _: [String: AnyCodable] = try await client.call(
+                method: "detach_device",
+                params: ["port": Int(port)]
+            )
+            await refresh()
+        } catch {
+            lastError = "Detach failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Disconnect from the current remote server.
+    public func disconnectServer() {
+        connectedServer = nil
+        remoteDevices = []
     }
 
     // MARK: - Polling

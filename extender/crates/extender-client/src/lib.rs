@@ -8,6 +8,7 @@
 //! - List currently imported devices
 //!
 //! On Windows, it uses the usbip-win2 UDE driver via IOCTLs.
+//! On macOS, it uses the ExtenderDriver DriverKit extension via IOKit.
 //! On unsupported platforms, attach/detach operations return
 //! `ClientError::PlatformNotSupported`.
 
@@ -29,6 +30,9 @@ pub mod vhci;
 
 #[cfg(target_os = "windows")]
 pub mod vhci_windows;
+
+#[cfg(target_os = "macos")]
+pub mod vhci_macos;
 
 // Re-export key types for convenience.
 pub use discover::{discover_servers, DiscoveredServer};

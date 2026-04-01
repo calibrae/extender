@@ -1,0 +1,15 @@
+#ifndef ExtenderVirtualSerial_h
+#define ExtenderVirtualSerial_h
+
+#include <Availability.h>
+#include <DriverKit/IOService.iig>
+
+class ExtenderVirtualSerial : public IOService
+{
+public:
+    virtual bool init() override;
+    virtual kern_return_t Start(IOService * provider) override;
+    virtual kern_return_t Stop(IOService * provider) override;
+};
+
+#endif /* ExtenderVirtualSerial_h */

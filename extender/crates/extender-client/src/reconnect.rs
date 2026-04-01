@@ -294,14 +294,14 @@ mod tests {
         }
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     #[tokio::test]
     async fn test_attach_with_reconnect_disabled_policy() {
         let engine = ClientEngine::new().unwrap();
         let addr: SocketAddr = "127.0.0.1:3240".parse().unwrap();
         let policy = ReconnectPolicy::disabled();
 
-        // On non-Linux, this returns PlatformNotSupported immediately.
+        // On unsupported platforms, this returns PlatformNotSupported immediately.
         let result = attach_with_reconnect(&engine, addr, "1-1", &policy).await;
         assert!(matches!(result, Err(ClientError::PlatformNotSupported)));
     }
