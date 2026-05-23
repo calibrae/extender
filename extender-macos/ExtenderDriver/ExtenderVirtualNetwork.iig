@@ -2,16 +2,31 @@
 #define ExtenderVirtualNetwork_h
 
 #include <Availability.h>
-#include <DriverKit/IOService.iig>
+#include <NetworkingDriverKit/IOUserNetworkEthernet.iig>
 
-// Note: This should inherit from IOUserNetworkEthernet (NetworkingDriverKit) once
-// that framework is linked in the Xcode project. For now, stub as IOService.
-class ExtenderVirtualNetwork : public IOService
+class ExtenderVirtualNetwork : public IOUserNetworkEthernet
 {
 public:
     virtual bool init() override;
     virtual kern_return_t Start(IOService * provider) override;
     virtual kern_return_t Stop(IOService * provider) override;
+
+    // Required IOUserNetworkEthernet pure-virtual overrides (deprecated API still required).
+    virtual kern_return_t SetInterfaceEnable(bool isEnable) override;
+    virtual kern_return_t SetPromiscuousModeEnable(bool enable) override;
+    virtual kern_return_t SetMulticastAddresses(const IOUserNetworkMACAddress * addresses,
+                                                uint32_t count) override;
+    virtual kern_return_t SetAllMulticastModeEnable(bool enable) override;
+    virtual kern_return_t SelectMediaType(IOUserNetworkMediaType mediaType) override;
+    virtual kern_return_t SetWakeOnMagicPacketEnable(bool enable) override;
+    virtual kern_return_t SetMTU(uint32_t mtu) override;
+    virtual kern_return_t GetMaxTransferUnit(uint32_t * mtu) override;
+    virtual kern_return_t SetHardwareAssists(uint32_t hardwareAssists) override;
+    virtual kern_return_t GetHardwareAssists(uint32_t * hardwareAssists) override;
+
+    // Extender bridge.
+    void submitInputReport(const void * data, uint32_t length) LOCALONLY;
+    bool dequeuePendingOutput(void * hdrOut, void * bufOut, uint32_t maxLen, uint32_t * outLen) LOCALONLY;
 };
 
 #endif /* ExtenderVirtualNetwork_h */

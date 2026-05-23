@@ -16,7 +16,7 @@ public final class SystemExtensionManager: NSObject, ObservableObject, OSSystemE
 
     public func activateExtension() {
         let request = OSSystemExtensionRequest.activationRequest(
-            forExtensionWithIdentifier: "com.calibrae.extender.driver",
+            forExtensionWithIdentifier: "com.calibrae.extender.app.driver",
             queue: .main
         )
         request.delegate = self

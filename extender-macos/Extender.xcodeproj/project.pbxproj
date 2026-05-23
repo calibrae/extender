@@ -7,29 +7,36 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		015C292CE7E7B2EACE8C3044 /* ExtenderUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = B293F87C13689D8DAACE0F38 /* ExtenderUserClient.iig */; };
+		0DA0B35A75E166BEBFBADB68 /* ExtenderVirtualSerial.iig in Sources */ = {isa = PBXBuildFile; fileRef = 516B189FE9B1B261D6D9DE7F /* ExtenderVirtualSerial.iig */; };
+		13481DDACA70501523229DF9 /* SerialDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 229AC073EE4467F2EB271590 /* SerialDriverKit.framework */; };
+		1903434C61E3412D368BC45A /* ExtenderVirtualNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DCBD44CC3F8B8E4018D84032 /* ExtenderVirtualNetwork.cpp */; };
 		1A5AF50D4201EBFCCB9A5960 /* DriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3A7357C09D505526117661C1 /* DriverKit.framework */; };
+		2369FE3AB10C70FCD3FF3A94 /* ExtenderVirtualHID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 05195EF66509E351FEC6E971 /* ExtenderVirtualHID.cpp */; };
+		2526996B7357ECD0B3AEC903 /* ExtenderVirtualNetwork.iig in Sources */ = {isa = PBXBuildFile; fileRef = F50F54411755AF172B8657A8 /* ExtenderVirtualNetwork.iig */; };
 		3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */; };
+		30A6E9E5ECB1232DB8422ED5 /* HIDDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 356D3606D361032EA2694FF3 /* HIDDriverKit.framework */; };
+		4ADB42F6DCDF3BEA84658389 /* USBDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1DFB7DABE5550347FAA83EA /* USBDriverKit.framework */; };
 		7084B27B48228E2E52B3E918 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31AF3260293E558E65BACF66 /* MenuBarView.swift */; };
+		709BA4524EC34C100EA63C72 /* ExtenderVirtualHID.iig in Sources */ = {isa = PBXBuildFile; fileRef = 4E6BCC0D1FC88CE4376C5DD2 /* ExtenderVirtualHID.iig */; };
+		78AB10EA69E77F502D483E10 /* ExtenderVirtualStorage.iig in Sources */ = {isa = PBXBuildFile; fileRef = E95A20684D5845433AC9CB8E /* ExtenderVirtualStorage.iig */; };
+		7B602EDF8FA44BA14D95C174 /* ExtenderVirtualAudio.iig in Sources */ = {isa = PBXBuildFile; fileRef = F83336E40E3AEEB96628442C /* ExtenderVirtualAudio.iig */; };
+		7DDA4A87FB703210C9CD5966 /* ExtenderVirtualStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FDDEB8B9E9E091E97B837AAE /* ExtenderVirtualStorage.cpp */; };
+		82C2BC9D44E6A9E5D3386671 /* ExtenderDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 307D1C1B71B22F6E370D1D78 /* ExtenderDriver.cpp */; };
+		89C9404E168772E6E06A7A67 /* ExtenderExportDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E17001F3FA276F5F726D7384 /* ExtenderExportDevice.cpp */; };
+		98C14808168CBF3B6C46D751 /* ExtenderVirtualAudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE1613EE67047BEDF63075F9 /* ExtenderVirtualAudio.cpp */; };
+		9B7F07E00DAABA9863C832B5 /* BlockStorageDeviceDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B9080B5B6DABD8DFB34A67B9 /* BlockStorageDeviceDriverKit.framework */; };
+		9F2EA6CAE8216B526EAF3A68 /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70165B590517AEBD83AB0E47 /* SystemExtensionManager.swift */; };
 		A2848EA9A1F723CEDE8E12D1 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = DD9B30EF17F809EB53FC1CC7 /* README.md */; };
+		AE42B6ABC06E21FB6603D571 /* ExtenderVirtualSerial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0E3FACD3C3FE15A64D2AADE1 /* ExtenderVirtualSerial.cpp */; };
+		B7BFE991B6DF585F4BFA0AD9 /* AudioDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2038D1EF498FA742E3CF45C /* AudioDriverKit.framework */; };
+		BCDBDE27F2E00FEA7CCDE072 /* ExtenderExportDevice.iig in Sources */ = {isa = PBXBuildFile; fileRef = 1AA69E561E0860C301896F7E /* ExtenderExportDevice.iig */; };
+		CB5CC078ADFDD88FF490F277 /* ExtenderUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2A63B784A3D14FB951ECDC /* ExtenderUserClient.cpp */; };
 		E4A2CF15E9A0765B9943524C /* ExtenderDriver.systemextension in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E59395184A7D6CE71D2553CF /* ExtenderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07BF47CF49273D79BE91B38C /* ExtenderApp.swift */; };
+		EB8D0EDFDAA072A13663F4F7 /* NetworkingDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC3CDE02ED7B045E9BECED7C /* NetworkingDriverKit.framework */; };
+		F2872F2FF9E4F741DD05E1F2 /* ExtenderDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = B236C9478E245DA88D23179A /* ExtenderDriver.iig */; };
 		F5C3BD990D339317B9CBF39E /* DaemonManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */; };
-		AA000001AA000001AA000001 /* ExtenderDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA100001AA100001AA100001 /* ExtenderDriver.cpp */; };
-		AA000002AA000002AA000002 /* ExtenderDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA100002AA100002AA100002 /* ExtenderDriver.iig */; };
-		AA000003AA000003AA000003 /* ExtenderUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA100003AA100003AA100003 /* ExtenderUserClient.cpp */; };
-		AA000004AA000004AA000004 /* ExtenderUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA100004AA100004AA100004 /* ExtenderUserClient.iig */; };
-		AA000005AA000005AA000005 /* ExtenderVirtualHID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA100005AA100005AA100005 /* ExtenderVirtualHID.cpp */; };
-		AA000006AA000006AA000006 /* ExtenderVirtualHID.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA100006AA100006AA100006 /* ExtenderVirtualHID.iig */; };
-		AA000007AA000007AA000007 /* ExtenderVirtualStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA100007AA100007AA100007 /* ExtenderVirtualStorage.cpp */; };
-		AA000008AA000008AA000008 /* ExtenderVirtualStorage.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA100008AA100008AA100008 /* ExtenderVirtualStorage.iig */; };
-		AA000009AA000009AA000009 /* ExtenderVirtualNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA100009AA100009AA100009 /* ExtenderVirtualNetwork.cpp */; };
-		AA00000AAA00000AAA00000A /* ExtenderVirtualNetwork.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA10000AAA10000AAA10000A /* ExtenderVirtualNetwork.iig */; };
-		AA00000BAA00000BAA00000B /* ExtenderVirtualSerial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA10000BAA10000BAA10000B /* ExtenderVirtualSerial.cpp */; };
-		AA00000CAA00000CAA00000C /* ExtenderVirtualSerial.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA10000CAA10000CAA10000C /* ExtenderVirtualSerial.iig */; };
-		AA00000DAA00000DAA00000D /* ExtenderVirtualAudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA10000DAA10000DAA10000D /* ExtenderVirtualAudio.cpp */; };
-		AA00000EAA00000EAA00000E /* ExtenderVirtualAudio.iig in Sources */ = {isa = PBXBuildFile; fileRef = AA10000EAA10000EAA10000E /* ExtenderVirtualAudio.iig */; };
-		BB000002BB000002BB000002 /* HIDDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB000001BB000001BB000001 /* HIDDriverKit.framework */; };
-		CC000002CC000002CC000002 /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001CC000001CC000001 /* SystemExtensionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,8 +53,8 @@
 		14E09FC6992BDBCE01818264 /* Embed Dependencies */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
+			dstPath = Contents/Library/SystemExtensions;
+			dstSubfolderSpec = 1;
 			files = (
 				E4A2CF15E9A0765B9943524C /* ExtenderDriver.systemextension in Embed Dependencies */,
 			);
@@ -57,33 +64,40 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		05195EF66509E351FEC6E971 /* ExtenderVirtualHID.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualHID.cpp; sourceTree = "<group>"; };
 		07BF47CF49273D79BE91B38C /* ExtenderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtenderApp.swift; sourceTree = "<group>"; };
 		07DF7D2CA1203D80775A2B97 /* ExtenderDriver.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExtenderDriver.entitlements; sourceTree = "<group>"; };
+		0E3FACD3C3FE15A64D2AADE1 /* ExtenderVirtualSerial.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualSerial.cpp; sourceTree = "<group>"; };
+		1A2A63B784A3D14FB951ECDC /* ExtenderUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderUserClient.cpp; sourceTree = "<group>"; };
+		1AA69E561E0860C301896F7E /* ExtenderExportDevice.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderExportDevice.iig; sourceTree = "<group>"; };
+		229AC073EE4467F2EB271590 /* SerialDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = SerialDriverKit.framework; sourceTree = "<group>"; };
 		27D57A5B6E4C256C0D69A61D /* ExtenderDriver.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = ExtenderDriver.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
+		307D1C1B71B22F6E370D1D78 /* ExtenderDriver.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderDriver.cpp; sourceTree = "<group>"; };
 		31AF3260293E558E65BACF66 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		356D3606D361032EA2694FF3 /* HIDDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = HIDDriverKit.framework; sourceTree = "<group>"; };
 		3A7357C09D505526117661C1 /* DriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = DriverKit.framework; sourceTree = "<group>"; };
+		4E6BCC0D1FC88CE4376C5DD2 /* ExtenderVirtualHID.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualHID.iig; sourceTree = "<group>"; };
+		516B189FE9B1B261D6D9DE7F /* ExtenderVirtualSerial.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualSerial.iig; sourceTree = "<group>"; };
+		70165B590517AEBD83AB0E47 /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
 		79881657B66319B872F96432 /* ExtenderApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExtenderApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A02DFC6F16292DEC86D0AA73 /* ExtenderProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExtenderProtocol.h; sourceTree = "<group>"; };
+		B236C9478E245DA88D23179A /* ExtenderDriver.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderDriver.iig; sourceTree = "<group>"; };
+		B293F87C13689D8DAACE0F38 /* ExtenderUserClient.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderUserClient.iig; sourceTree = "<group>"; };
 		B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONRPCClient.swift; sourceTree = "<group>"; };
+		B9080B5B6DABD8DFB34A67B9 /* BlockStorageDeviceDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = BlockStorageDeviceDriverKit.framework; sourceTree = "<group>"; };
+		BE1613EE67047BEDF63075F9 /* ExtenderVirtualAudio.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualAudio.cpp; sourceTree = "<group>"; };
+		D1DFB7DABE5550347FAA83EA /* USBDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = USBDriverKit.framework; sourceTree = "<group>"; };
+		DC3CDE02ED7B045E9BECED7C /* NetworkingDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = NetworkingDriverKit.framework; sourceTree = "<group>"; };
+		DCBD44CC3F8B8E4018D84032 /* ExtenderVirtualNetwork.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualNetwork.cpp; sourceTree = "<group>"; };
 		DD9B30EF17F809EB53FC1CC7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonManager.swift; sourceTree = "<group>"; };
+		E17001F3FA276F5F726D7384 /* ExtenderExportDevice.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderExportDevice.cpp; sourceTree = "<group>"; };
+		E95A20684D5845433AC9CB8E /* ExtenderVirtualStorage.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualStorage.iig; sourceTree = "<group>"; };
+		F2038D1EF498FA742E3CF45C /* AudioDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = AudioDriverKit.framework; sourceTree = "<group>"; };
+		F50F54411755AF172B8657A8 /* ExtenderVirtualNetwork.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualNetwork.iig; sourceTree = "<group>"; };
+		F83336E40E3AEEB96628442C /* ExtenderVirtualAudio.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualAudio.iig; sourceTree = "<group>"; };
 		FB14EE68AEE1D8578D333CBC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		AA100000AA100000AA100000 /* ExtenderProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExtenderProtocol.h; sourceTree = "<group>"; };
-		AA100001AA100001AA100001 /* ExtenderDriver.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderDriver.cpp; sourceTree = "<group>"; };
-		AA100002AA100002AA100002 /* ExtenderDriver.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderDriver.iig; sourceTree = "<group>"; };
-		AA100003AA100003AA100003 /* ExtenderUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderUserClient.cpp; sourceTree = "<group>"; };
-		AA100004AA100004AA100004 /* ExtenderUserClient.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderUserClient.iig; sourceTree = "<group>"; };
-		AA100005AA100005AA100005 /* ExtenderVirtualHID.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualHID.cpp; sourceTree = "<group>"; };
-		AA100006AA100006AA100006 /* ExtenderVirtualHID.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualHID.iig; sourceTree = "<group>"; };
-		AA100007AA100007AA100007 /* ExtenderVirtualStorage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualStorage.cpp; sourceTree = "<group>"; };
-		AA100008AA100008AA100008 /* ExtenderVirtualStorage.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualStorage.iig; sourceTree = "<group>"; };
-		AA100009AA100009AA100009 /* ExtenderVirtualNetwork.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualNetwork.cpp; sourceTree = "<group>"; };
-		AA10000AAA10000AAA10000A /* ExtenderVirtualNetwork.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualNetwork.iig; sourceTree = "<group>"; };
-		AA10000BAA10000BAA10000B /* ExtenderVirtualSerial.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualSerial.cpp; sourceTree = "<group>"; };
-		AA10000CAA10000CAA10000C /* ExtenderVirtualSerial.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualSerial.iig; sourceTree = "<group>"; };
-		AA10000DAA10000DAA10000D /* ExtenderVirtualAudio.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualAudio.cpp; sourceTree = "<group>"; };
-		AA10000EAA10000EAA10000E /* ExtenderVirtualAudio.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ExtenderVirtualAudio.iig; sourceTree = "<group>"; };
-		BB000001BB000001BB000001 /* HIDDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HIDDriverKit.framework; path = System/DriverKit/System/Library/Frameworks/HIDDriverKit.framework; sourceTree = SDKROOT; };
-		CC000001CC000001CC000001 /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
+		FDDEB8B9E9E091E97B837AAE /* ExtenderVirtualStorage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExtenderVirtualStorage.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,7 +106,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A5AF50D4201EBFCCB9A5960 /* DriverKit.framework in Frameworks */,
-				BB000002BB000002BB000002 /* HIDDriverKit.framework in Frameworks */,
+				30A6E9E5ECB1232DB8422ED5 /* HIDDriverKit.framework in Frameworks */,
+				9B7F07E00DAABA9863C832B5 /* BlockStorageDeviceDriverKit.framework in Frameworks */,
+				EB8D0EDFDAA072A13663F4F7 /* NetworkingDriverKit.framework in Frameworks */,
+				B7BFE991B6DF585F4BFA0AD9 /* AudioDriverKit.framework in Frameworks */,
+				13481DDACA70501523229DF9 /* SerialDriverKit.framework in Frameworks */,
+				4ADB42F6DCDF3BEA84658389 /* USBDriverKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,7 +123,7 @@
 			children = (
 				E0CE8EBC0B1718120F7B6E38 /* DaemonManager.swift */,
 				B71382F50F8CD0D4308609E0 /* JSONRPCClient.swift */,
-				CC000001CC000001CC000001 /* SystemExtensionManager.swift */,
+				70165B590517AEBD83AB0E47 /* SystemExtensionManager.swift */,
 			);
 			path = ExtenderBridge;
 			sourceTree = "<group>";
@@ -112,22 +131,24 @@
 		33F4AE9F1CA0D82CC8A01C46 /* ExtenderDriver */ = {
 			isa = PBXGroup;
 			children = (
+				307D1C1B71B22F6E370D1D78 /* ExtenderDriver.cpp */,
 				07DF7D2CA1203D80775A2B97 /* ExtenderDriver.entitlements */,
-				AA100000AA100000AA100000 /* ExtenderProtocol.h */,
-				AA100002AA100002AA100002 /* ExtenderDriver.iig */,
-				AA100001AA100001AA100001 /* ExtenderDriver.cpp */,
-				AA100004AA100004AA100004 /* ExtenderUserClient.iig */,
-				AA100003AA100003AA100003 /* ExtenderUserClient.cpp */,
-				AA100006AA100006AA100006 /* ExtenderVirtualHID.iig */,
-				AA100005AA100005AA100005 /* ExtenderVirtualHID.cpp */,
-				AA100008AA100008AA100008 /* ExtenderVirtualStorage.iig */,
-				AA100007AA100007AA100007 /* ExtenderVirtualStorage.cpp */,
-				AA10000AAA10000AAA10000A /* ExtenderVirtualNetwork.iig */,
-				AA100009AA100009AA100009 /* ExtenderVirtualNetwork.cpp */,
-				AA10000CAA10000CAA10000C /* ExtenderVirtualSerial.iig */,
-				AA10000BAA10000BAA10000B /* ExtenderVirtualSerial.cpp */,
-				AA10000EAA10000EAA10000E /* ExtenderVirtualAudio.iig */,
-				AA10000DAA10000DAA10000D /* ExtenderVirtualAudio.cpp */,
+				B236C9478E245DA88D23179A /* ExtenderDriver.iig */,
+				E17001F3FA276F5F726D7384 /* ExtenderExportDevice.cpp */,
+				1AA69E561E0860C301896F7E /* ExtenderExportDevice.iig */,
+				A02DFC6F16292DEC86D0AA73 /* ExtenderProtocol.h */,
+				1A2A63B784A3D14FB951ECDC /* ExtenderUserClient.cpp */,
+				B293F87C13689D8DAACE0F38 /* ExtenderUserClient.iig */,
+				BE1613EE67047BEDF63075F9 /* ExtenderVirtualAudio.cpp */,
+				F83336E40E3AEEB96628442C /* ExtenderVirtualAudio.iig */,
+				05195EF66509E351FEC6E971 /* ExtenderVirtualHID.cpp */,
+				4E6BCC0D1FC88CE4376C5DD2 /* ExtenderVirtualHID.iig */,
+				DCBD44CC3F8B8E4018D84032 /* ExtenderVirtualNetwork.cpp */,
+				F50F54411755AF172B8657A8 /* ExtenderVirtualNetwork.iig */,
+				0E3FACD3C3FE15A64D2AADE1 /* ExtenderVirtualSerial.cpp */,
+				516B189FE9B1B261D6D9DE7F /* ExtenderVirtualSerial.iig */,
+				FDDEB8B9E9E091E97B837AAE /* ExtenderVirtualStorage.cpp */,
+				E95A20684D5845433AC9CB8E /* ExtenderVirtualStorage.iig */,
 				FB14EE68AEE1D8578D333CBC /* Info.plist */,
 				DD9B30EF17F809EB53FC1CC7 /* README.md */,
 			);
@@ -155,8 +176,13 @@
 		C42A013EE4A973EEEC1BEDCE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				F2038D1EF498FA742E3CF45C /* AudioDriverKit.framework */,
+				B9080B5B6DABD8DFB34A67B9 /* BlockStorageDeviceDriverKit.framework */,
 				3A7357C09D505526117661C1 /* DriverKit.framework */,
-				BB000001BB000001BB000001 /* HIDDriverKit.framework */,
+				356D3606D361032EA2694FF3 /* HIDDriverKit.framework */,
+				DC3CDE02ED7B045E9BECED7C /* NetworkingDriverKit.framework */,
+				229AC073EE4467F2EB271590 /* SerialDriverKit.framework */,
+				D1DFB7DABE5550347FAA83EA /* USBDriverKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -237,6 +263,16 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					CDC16EFD2D9812C0911310FD = {
+						DevelopmentTeam = XJQQCN392F;
+						ProvisioningStyle = Automatic;
+					};
+					E816EDC4408CAC7830885AA7 = {
+						DevelopmentTeam = XJQQCN392F;
+						ProvisioningStyle = Manual;
+					};
+				};
 			};
 			buildConfigurationList = 22A636CD361F7B83A25330E7 /* Build configuration list for PBXProject "Extender" */;
 			developmentRegion = en;
@@ -278,7 +314,7 @@
 				E59395184A7D6CE71D2553CF /* ExtenderApp.swift in Sources */,
 				3082B3DE23040E635FBC63E3 /* JSONRPCClient.swift in Sources */,
 				7084B27B48228E2E52B3E918 /* MenuBarView.swift in Sources */,
-				CC000002CC000002CC000002 /* SystemExtensionManager.swift in Sources */,
+				9F2EA6CAE8216B526EAF3A68 /* SystemExtensionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -286,20 +322,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000001AA000001AA000001 /* ExtenderDriver.cpp in Sources */,
-				AA000002AA000002AA000002 /* ExtenderDriver.iig in Sources */,
-				AA000003AA000003AA000003 /* ExtenderUserClient.cpp in Sources */,
-				AA000004AA000004AA000004 /* ExtenderUserClient.iig in Sources */,
-				AA000005AA000005AA000005 /* ExtenderVirtualHID.cpp in Sources */,
-				AA000006AA000006AA000006 /* ExtenderVirtualHID.iig in Sources */,
-				AA000007AA000007AA000007 /* ExtenderVirtualStorage.cpp in Sources */,
-				AA000008AA000008AA000008 /* ExtenderVirtualStorage.iig in Sources */,
-				AA000009AA000009AA000009 /* ExtenderVirtualNetwork.cpp in Sources */,
-				AA00000AAA00000AAA00000A /* ExtenderVirtualNetwork.iig in Sources */,
-				AA00000BAA00000BAA00000B /* ExtenderVirtualSerial.cpp in Sources */,
-				AA00000CAA00000CAA00000C /* ExtenderVirtualSerial.iig in Sources */,
-				AA00000DAA00000DAA00000D /* ExtenderVirtualAudio.cpp in Sources */,
-				AA00000EAA00000EAA00000E /* ExtenderVirtualAudio.iig in Sources */,
+				82C2BC9D44E6A9E5D3386671 /* ExtenderDriver.cpp in Sources */,
+				F2872F2FF9E4F741DD05E1F2 /* ExtenderDriver.iig in Sources */,
+				89C9404E168772E6E06A7A67 /* ExtenderExportDevice.cpp in Sources */,
+				BCDBDE27F2E00FEA7CCDE072 /* ExtenderExportDevice.iig in Sources */,
+				CB5CC078ADFDD88FF490F277 /* ExtenderUserClient.cpp in Sources */,
+				015C292CE7E7B2EACE8C3044 /* ExtenderUserClient.iig in Sources */,
+				98C14808168CBF3B6C46D751 /* ExtenderVirtualAudio.cpp in Sources */,
+				7B602EDF8FA44BA14D95C174 /* ExtenderVirtualAudio.iig in Sources */,
+				2369FE3AB10C70FCD3FF3A94 /* ExtenderVirtualHID.cpp in Sources */,
+				709BA4524EC34C100EA63C72 /* ExtenderVirtualHID.iig in Sources */,
+				1903434C61E3412D368BC45A /* ExtenderVirtualNetwork.cpp in Sources */,
+				2526996B7357ECD0B3AEC903 /* ExtenderVirtualNetwork.iig in Sources */,
+				AE42B6ABC06E21FB6603D571 /* ExtenderVirtualSerial.cpp in Sources */,
+				0DA0B35A75E166BEBFBADB68 /* ExtenderVirtualSerial.iig in Sources */,
+				7DDA4A87FB703210C9CD5966 /* ExtenderVirtualStorage.cpp in Sources */,
+				78AB10EA69E77F502D483E10 /* ExtenderVirtualStorage.iig in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,22 +357,20 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = XJQQCN392F;
 				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
 				);
 				INFOPLIST_FILE = ExtenderDriver/Info.plist;
+				IOUserServerName = com.calibrae.extender.app.driver;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.app.driver;
+				PROVISIONING_PROFILE_SPECIFIER = "extender-app-driverkit-dev-portal";
 				SDKROOT = driverkit;
 				SKIP_INSTALL = YES;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
@@ -374,10 +410,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = XJQQCN392F;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -404,22 +442,20 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CODE_SIGN_ENTITLEMENTS = ExtenderDriver/ExtenderDriver.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = XJQQCN392F;
 				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
 				);
 				INFOPLIST_FILE = ExtenderDriver/Info.plist;
+				IOUserServerName = com.calibrae.extender.app.driver;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.driver;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.app.driver;
+				PROVISIONING_PROFILE_SPECIFIER = "extender-app-driverkit-dev-portal";
 				SDKROOT = driverkit;
 				SKIP_INSTALL = YES;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
@@ -431,22 +467,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = XJQQCN392F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Extender;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSMinimumSystemVersion = 13.0;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 calibrae. MIT OR Apache-2.0.";
+				INFOPLIST_VALUES = "[\"CFBundleDisplayName\": \"Extender\", \"CFBundleName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.app;
 				SDKROOT = macosx;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
 			};
@@ -457,22 +490,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ExtenderApp/Entitlements/ExtenderApp.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = XJQQCN392F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Extender;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSMinimumSystemVersion = 13.0;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 calibrae. MIT OR Apache-2.0.";
+				INFOPLIST_VALUES = "[\"CFBundleDisplayName\": \"Extender\", \"CFBundleName\": \"Extender\", \"NSHumanReadableCopyright\": \"Copyright 2026 calibrae. MIT OR Apache-2.0.\", \"LSUIElement\": true, \"LSMinimumSystemVersion\": \"13.0\"]";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.calibrae.extender.app;
 				SDKROOT = macosx;
 				SYSTEM_EXTENSION_API_ENABLED = YES;
 			};
@@ -511,10 +541,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = XJQQCN392F;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

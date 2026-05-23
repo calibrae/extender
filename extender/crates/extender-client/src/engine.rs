@@ -6,6 +6,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+#[cfg(target_os = "macos")]
+use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::error::ClientError;
@@ -21,6 +23,7 @@ struct RegistryEntry {
     id_product: u16,
     speed: u32,
 }
+
 
 /// The client engine manages device import/export operations.
 ///
@@ -38,12 +41,20 @@ pub struct ClientEngine {
     vhci: crate::vhci_windows::WindowsVhciDriver,
 
     /// VHCI driver instance (macOS only).
+    ///
+    /// Wrapped in `Arc` so the per-device URB forwarding task can hold a
+    /// clone for the lifetime of the attachment.
     #[cfg(target_os = "macos")]
-    vhci: crate::vhci_macos::MacOSVhciDriver,
+    vhci: Arc<crate::vhci_macos::MacOSVhciDriver>,
 
     /// Registry of imported devices, keyed by port number.
     #[allow(dead_code)] // Used only on Linux/Windows/macOS
     registry: Mutex<HashMap<u32, RegistryEntry>>,
+
+    /// macOS: per-device URB forwarding task handles, keyed by devid.
+    /// On detach we abort the handle so the task tears down its TCP halves.
+    #[cfg(target_os = "macos")]
+    urb_tasks: Mutex<HashMap<u32, tokio::task::JoinHandle<()>>>,
 }
 
 impl ClientEngine {
@@ -78,10 +89,11 @@ impl ClientEngine {
     /// Opens the ExtenderDriver DriverKit extension for attach/detach operations.
     #[cfg(target_os = "macos")]
     pub fn new() -> Result<Self, ClientError> {
-        let vhci = crate::vhci_macos::MacOSVhciDriver::new()?;
+        let vhci = Arc::new(crate::vhci_macos::MacOSVhciDriver::new()?);
         Ok(ClientEngine {
             vhci,
             registry: Mutex::new(HashMap::new()),
+            urb_tasks: Mutex::new(HashMap::new()),
         })
     }
 
@@ -404,11 +416,14 @@ impl ClientEngine {
         };
         self.registry.lock().unwrap().insert(devid, entry);
 
-        // TODO: Spawn a background tokio task for ongoing URB forwarding:
-        // - Poll get_pending_output() for requests from macOS -> send as USB/IP URBs
-        // - Receive USB/IP URB responses from server -> call submit_input()
-        // This requires the TCP stream to remain open and is deferred to a
-        // future change that adds the URB forwarding loop.
+        // Spawn the URB forwarding task. It owns the split TCP halves and a
+        // clone of the driver handle, and runs until the TCP stream closes,
+        // an unrecoverable error fires, or it gets aborted on detach.
+        let vhci = Arc::clone(&self.vhci);
+        let handle = tokio::spawn(async move {
+            urb_forward_loop(vhci, devid, reader, writer).await;
+        });
+        self.urb_tasks.lock().unwrap().insert(devid, handle);
 
         Ok(AttachedDevice {
             port: devid,
@@ -473,6 +488,12 @@ impl ClientEngine {
             // On macOS, port is the device ID.
             if !self.registry.lock().unwrap().contains_key(&port) {
                 return Err(ClientError::PortNotAttached { port });
+            }
+
+            // Stop the URB forwarding task first so it doesn't race the
+            // driver destroy call with in-flight IOKit calls.
+            if let Some(handle) = self.urb_tasks.lock().unwrap().remove(&port) {
+                handle.abort();
             }
 
             self.vhci.destroy_device(port)?;
@@ -586,6 +607,169 @@ fn build_device_descriptor(dev: &extender_protocol::UsbDevice) -> [u8; 18] {
     desc[16] = 0; // iSerialNumber
     desc[17] = dev.num_configurations;
     desc
+}
+
+/// URB forwarding loop for a single attached macOS device.
+///
+/// READ side: drain `RetSubmit` responses from the server and inject them into
+/// the dext via `complete_request`. WRITE side: poll the dext for pending
+/// host->device requests and serialize them as `CmdSubmit` to the server.
+///
+/// The loop terminates when the TCP read end returns an error (e.g., EOF) or
+/// when the task is aborted by detach. It is intentionally minimal: no
+/// CMD_UNLINK, no isochronous, no clever direction inference. Runtime
+/// correctness will be exercised once the dext is signed and installed.
+#[cfg(target_os = "macos")]
+async fn urb_forward_loop(
+    vhci: Arc<crate::vhci_macos::MacOSVhciDriver>,
+    devid: u32,
+    mut reader: tokio::net::tcp::OwnedReadHalf,
+    mut writer: tokio::net::tcp::OwnedWriteHalf,
+) {
+    use std::time::Duration;
+
+    use bytes::Bytes;
+    use extender_protocol::codec::{read_urb_message, write_urb_message};
+    use extender_protocol::urb::{
+        CmdSubmit, UsbipHeaderBasic, NON_ISO_PACKETS_SENTINEL,
+    };
+    use extender_protocol::{Command, UrbMessage};
+
+    // seqnum -> dext request_id, so we can pair RetSubmit back to the dext.
+    let mut pending: HashMap<u32, u32> = HashMap::new();
+    let mut next_seqnum: u32 = 1;
+
+    // Poll the dext for new host->device requests at this cadence. 5ms is a
+    // reasonable starting point; HID/storage latencies dominate well above
+    // this floor.
+    let mut tick = tokio::time::interval(Duration::from_millis(5));
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    loop {
+        tokio::select! {
+            // ── READ side: a RetSubmit (or other URB) arrived from the server.
+            res = read_urb_message(&mut reader) => {
+                match res {
+                    Ok(UrbMessage::RetSubmit(ret)) => {
+                        let seqnum = ret.header.seqnum;
+                        let req_id = match pending.remove(&seqnum) {
+                            Some(id) => id,
+                            None => {
+                                tracing::warn!(
+                                    devid, seqnum,
+                                    "RetSubmit for unknown seqnum; dropping"
+                                );
+                                continue;
+                            }
+                        };
+
+                        // IOReturn: 0 = kIOReturnSuccess, anything else =
+                        // kIOReturnError (0xE00002BC). The dext maps these
+                        // back to USB-layer statuses as needed.
+                        let status = if ret.status == 0 {
+                            0
+                        } else {
+                            0xE00002BCu32 as i32
+                        };
+
+                        if let Err(e) = vhci.complete_request(
+                            devid,
+                            req_id,
+                            status,
+                            &ret.transfer_buffer,
+                        ) {
+                            tracing::warn!(
+                                devid, req_id, error = ?e,
+                                "complete_request failed"
+                            );
+                        }
+                    }
+                    Ok(UrbMessage::RetUnlink(_)) => {
+                        // Unlink not implemented yet; ignore so we stay
+                        // protocol-tolerant if the server emits one.
+                        tracing::debug!(devid, "RetUnlink ignored");
+                    }
+                    Ok(other) => {
+                        tracing::warn!(
+                            devid,
+                            "unexpected URB from server: {:?}",
+                            std::mem::discriminant(&other)
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            devid, error = ?e,
+                            "URB read failed; exiting forward loop"
+                        );
+                        break;
+                    }
+                }
+            }
+
+            // ── WRITE side: poll the dext for queued host->device requests.
+            _ = tick.tick() => {
+                let pending_req = match vhci.get_pending_output(devid) {
+                    Ok(Some(req)) => req,
+                    Ok(None) => continue,
+                    Err(e) => {
+                        tracing::warn!(
+                            devid, error = ?e,
+                            "get_pending_output failed; continuing"
+                        );
+                        continue;
+                    }
+                };
+
+                let seqnum = next_seqnum;
+                next_seqnum = next_seqnum.wrapping_add(1);
+                pending.insert(seqnum, pending_req.request_id);
+
+                // Direction: bit 7 of the endpoint address (USB convention).
+                // 1 = IN (device→host), 0 = OUT (host→device).
+                let direction = u32::from((pending_req.endpoint & 0x80) != 0);
+                let ep = pending_req.endpoint & 0x0F;
+
+                // Minimal model: ship the full pending payload as the
+                // transfer buffer; leave setup zeroed. Refinement to extract
+                // the 8-byte SETUP for control transfers comes once we wire
+                // the dext's request_type through.
+                let buf_len = pending_req.data.len() as u32;
+                let cmd = CmdSubmit {
+                    header: UsbipHeaderBasic {
+                        command: Command::CmdSubmit as u32,
+                        seqnum,
+                        devid,
+                        direction,
+                        ep,
+                    },
+                    transfer_flags: 0,
+                    transfer_buffer_length: buf_len,
+                    start_frame: 0,
+                    number_of_packets: NON_ISO_PACKETS_SENTINEL,
+                    interval: 0,
+                    setup: [0u8; 8],
+                    transfer_buffer: Bytes::from(pending_req.data),
+                    iso_packet_descriptors: Vec::new(),
+                };
+
+                if let Err(e) = write_urb_message(
+                    &mut writer,
+                    &UrbMessage::CmdSubmit(cmd),
+                ).await {
+                    tracing::error!(
+                        devid, error = ?e,
+                        "URB write failed; exiting forward loop"
+                    );
+                    // Drop the entry we just inserted — no response will
+                    // ever land.
+                    pending.remove(&seqnum);
+                    break;
+                }
+            }
+        }
+    }
+
+    tracing::info!(devid, "URB forward loop exited");
 }
 
 #[cfg(test)]

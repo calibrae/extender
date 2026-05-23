@@ -22,22 +22,76 @@
 		<dict>
 			<key>CFBundleIdentifier</key>
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>ExportDeviceProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderExportDevice</string>
+				<key>IOUserClass</key>
+				<string>ExtenderExportDevice</string>
+			</dict>
 			<key>IOClass</key>
 			<string>IOUserService</string>
-			<key>IOUserClass</key>
-			<string>ExtenderDriver</string>
-			<key>IOUserServerName</key>
-			<string>com.calibrae.extender.driver</string>
 			<key>IOProviderClass</key>
 			<string>IOUserResources</string>
 			<key>IOResourceMatch</key>
 			<string>IOKit</string>
+			<key>IOUserClass</key>
+			<string>ExtenderDriver</string>
+			<key>IOUserServerName</key>
+			<string>com.calibrae.extender.app.driver</string>
 			<key>UserClientProperties</key>
 			<dict>
 				<key>IOClass</key>
 				<string>IOUserUserClient</string>
 				<key>IOUserClass</key>
 				<string>ExtenderUserClient</string>
+			</dict>
+			<key>VirtualAudioProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderVirtualAudio</string>
+				<key>IOUserClass</key>
+				<string>ExtenderVirtualAudio</string>
+			</dict>
+			<key>VirtualHIDProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderVirtualHID</string>
+				<key>IOUserClass</key>
+				<string>ExtenderVirtualHID</string>
+			</dict>
+			<key>VirtualNetworkProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderVirtualNetwork</string>
+				<key>IOUserClass</key>
+				<string>ExtenderVirtualNetwork</string>
+			</dict>
+			<key>VirtualSerialProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderVirtualSerial</string>
+				<key>IOUserClass</key>
+				<string>ExtenderVirtualSerial</string>
+			</dict>
+			<key>VirtualStorageProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserService</string>
+				<key>IOMatchCategory</key>
+				<string>ExtenderVirtualStorage</string>
+				<key>IOUserClass</key>
+				<string>ExtenderVirtualStorage</string>
 			</dict>
 		</dict>
 	</dict>

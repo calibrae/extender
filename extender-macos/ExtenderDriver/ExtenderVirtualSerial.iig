@@ -2,14 +2,30 @@
 #define ExtenderVirtualSerial_h
 
 #include <Availability.h>
-#include <DriverKit/IOService.iig>
+#include <SerialDriverKit/IOUserSerial.iig>
 
-class ExtenderVirtualSerial : public IOService
+class ExtenderVirtualSerial : public IOUserSerial
 {
 public:
     virtual bool init() override;
     virtual kern_return_t Start(IOService * provider) override;
     virtual kern_return_t Stop(IOService * provider) override;
+
+    // Required IOUserSerial pure-virtual overrides — minimal scaffolds.
+    virtual kern_return_t HwResetFIFO(bool tx, bool rx) override;
+    virtual kern_return_t HwSendBreak(bool sendBreak) override;
+    virtual kern_return_t HwProgramUART(uint32_t baudRate, uint8_t nDataBits,
+                                        uint8_t nHalfStopBits, uint8_t parity) override;
+    virtual kern_return_t HwProgramBaudRate(uint32_t baudRate) override;
+    virtual kern_return_t HwProgramMCR(bool dtr, bool rts) override;
+    virtual kern_return_t HwGetModemStatus(bool * cts, bool * dsr,
+                                           bool * ri, bool * dcd) override;
+    virtual kern_return_t HwProgramLatencyTimer(uint32_t latency) override;
+    virtual kern_return_t HwProgramFlowControl(uint32_t arg, uint8_t xon, uint8_t xoff) override;
+
+    // Extender bridge — same shape as HID/Storage.
+    void submitInputReport(const void * data, uint32_t length) LOCALONLY;
+    bool dequeuePendingOutput(void * hdrOut, void * bufOut, uint32_t maxLen, uint32_t * outLen) LOCALONLY;
 };
 
 #endif /* ExtenderVirtualSerial_h */

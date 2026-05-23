@@ -9,7 +9,9 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: XJQQCN392F
-    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Apple Development"
+    ENABLE_HARDENED_RUNTIME: YES
 
 targets:
   ExtenderApp:
@@ -20,7 +22,12 @@ targets:
       - ExtenderApp/Sources/ExtenderBridge
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender
+        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender.app
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSMinimumSystemVersion: "13.0"
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright 2026 calibrae. MIT OR Apache-2.0."
+        INFOPLIST_KEY_CFBundleDisplayName: Extender
         INFOPLIST_VALUES:
           CFBundleName: Extender
           CFBundleDisplayName: Extender
@@ -29,12 +36,14 @@ targets:
           NSHumanReadableCopyright: "Copyright 2026 calibrae. MIT OR Apache-2.0."
         SYSTEM_EXTENSION_API_ENABLED: true
         CODE_SIGN_ENTITLEMENTS: ExtenderApp/Entitlements/ExtenderApp.entitlements
+        CODE_SIGN_STYLE: Automatic
     dependencies:
       - target: ExtenderDriver
         embed: true
         codeSign: true
         copy:
-          destination: plugins
+          destination: wrapper
+          subpath: Contents/Library/SystemExtensions
 
   ExtenderDriver:
     type: system-extension
@@ -43,15 +52,67 @@ targets:
       - ExtenderDriver
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender.driver
+        PRODUCT_BUNDLE_IDENTIFIER: com.calibrae.extender.app.driver
+        IOUserServerName: com.calibrae.extender.app.driver
         SKIP_INSTALL: true
         CODE_SIGN_ENTITLEMENTS: ExtenderDriver/ExtenderDriver.entitlements
         CLANG_CXX_LANGUAGE_STANDARD: c++20
         SYSTEM_EXTENSION_API_ENABLED: true
         DRIVERKIT_DEPLOYMENT_TARGET: "22.0"
         SDKROOT: driverkit
+        PROVISIONING_PROFILE_SPECIFIER: "extender-app-driverkit-dev-portal"
     dependencies:
       - framework: DriverKit.framework
         embed: false
+      - framework: HIDDriverKit.framework
+        embed: false
+      - framework: BlockStorageDeviceDriverKit.framework
+        embed: false
+      - framework: NetworkingDriverKit.framework
+        embed: false
+      - framework: AudioDriverKit.framework
+        embed: false
+      - framework: SerialDriverKit.framework
+        embed: false
+      - framework: USBDriverKit.framework
+        embed: false
     info:
       path: ExtenderDriver/Info.plist
+      properties:
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        IOKitPersonalities:
+          ExtenderDriver:
+            CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+            IOClass: IOUserService
+            IOUserClass: ExtenderDriver
+            IOUserServerName: com.calibrae.extender.app.driver
+            IOProviderClass: IOUserResources
+            IOResourceMatch: IOKit
+            UserClientProperties:
+              IOClass: IOUserUserClient
+              IOUserClass: ExtenderUserClient
+            VirtualHIDProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderVirtualHID
+              IOMatchCategory: ExtenderVirtualHID
+            VirtualStorageProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderVirtualStorage
+              IOMatchCategory: ExtenderVirtualStorage
+            VirtualSerialProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderVirtualSerial
+              IOMatchCategory: ExtenderVirtualSerial
+            VirtualNetworkProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderVirtualNetwork
+              IOMatchCategory: ExtenderVirtualNetwork
+            VirtualAudioProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderVirtualAudio
+              IOMatchCategory: ExtenderVirtualAudio
+            ExportDeviceProperties:
+              IOClass: IOUserService
+              IOUserClass: ExtenderExportDevice
+              IOMatchCategory: ExtenderExportDevice

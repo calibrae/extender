@@ -21,3 +21,12 @@ extender-macos/DerivedData/
 .DS_Store
 *.swp
 *.swo
+
+# Python helper artifacts
+__pycache__/
+*.pyc
+
+# Local-only session/scratch files
+.claude/
+/resume.sh
+extender-macos/resume.sh

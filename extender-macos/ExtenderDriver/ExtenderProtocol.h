@@ -26,12 +26,24 @@ enum ExtenderDeviceType : uint32_t {
 
 // UserClient selectors (daemon -> driver)
 enum ExtenderSelector : uint64_t {
-    kCreateDevice     = 0,  // Create a virtual device
-    kDestroyDevice    = 1,  // Remove a virtual device
-    kSubmitInput      = 2,  // Send data from network to virtual device (URB response)
-    kGetPendingOutput = 3,  // Poll for data from virtual device to send over network (URB request)
-    kGetDeviceCount   = 4,  // Query number of active virtual devices
-    kConfigureDevice  = 5,  // Set device descriptors/parameters
+    // Import side (virtual device, daemon -> virtual device -> macOS)
+    kCreateDevice            = 0,  // Create a virtual device
+    kDestroyDevice           = 1,  // Remove a virtual device
+    kSubmitInput             = 2,  // Send data from network to virtual device (URB response)
+    kGetPendingOutput        = 3,  // Poll for data from virtual device to send over network (URB request)
+    kGetDeviceCount          = 4,  // Query number of active virtual devices
+    kConfigureDevice         = 5,  // Set device descriptors/parameters
+
+    // Export side (real USB device, macOS -> exported via daemon -> network)
+    kExportClaimDevice       = 6,  // Claim a real USB device by locationID for export. In: locationID. Out: exportSlotId.
+    kExportReleaseDevice     = 7,  // Release an exported device. In: exportSlotId.
+    kExportSubmitURB         = 8,  // Send a URB (e.g., control transfer, bulk OUT) to the claimed device. In: exportSlotId, endpoint, urbType + data buffer.
+    kExportGetPendingResponse = 9, // Poll for asynchronous responses from the claimed device (e.g., interrupt IN). In: exportSlotId.
+
+    // Import-side async completion. Daemon calls this to fulfill a request that
+    // was enqueued via kGetPendingOutput. In: deviceId, requestId, status. data:
+    // payload to satisfy the original getReport / setReport / SCSI READ.
+    kCompleteRequest         = 10,
 };
 
 // Device configuration subtypes for kConfigureDevice
@@ -89,6 +101,8 @@ struct ExtenderPendingOutputHeader {
     uint32_t endpoint;
     uint32_t dataLength;
     uint32_t requestType;  // 0 = bulk out, 1 = interrupt out, 2 = control
+    uint32_t requestId;    // Daemon echoes this back via kCompleteRequest to satisfy async ops
+    uint32_t reserved;
     // Followed by dataLength bytes of data
 };
 

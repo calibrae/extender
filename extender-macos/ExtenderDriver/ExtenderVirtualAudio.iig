@@ -2,16 +2,23 @@
 #define ExtenderVirtualAudio_h
 
 #include <Availability.h>
-#include <DriverKit/IOService.iig>
+#include <AudioDriverKit/IOUserAudioDriver.iig>
 
-// Note: This should inherit from IOUserAudioDevice (AudioDriverKit) once that
-// framework is linked in the Xcode project. For now, stub as IOService.
-class ExtenderVirtualAudio : public IOService
+// ExtenderVirtualAudio is the macOS-facing audio driver for an imported remote
+// USB audio device. IOUserAudioDriver is the IOService that owns one or more
+// IOUserAudioDevice instances (which are LOCALONLY C++ objects). The actual
+// IOUserAudioDevice creation (with streams + controls + format) is wired in
+// Start() when daemon provides the audio format via kConfigAudioFormat.
+class ExtenderVirtualAudio : public IOUserAudioDriver
 {
 public:
     virtual bool init() override;
     virtual kern_return_t Start(IOService * provider) override;
     virtual kern_return_t Stop(IOService * provider) override;
+
+    // Extender bridge.
+    void submitInputReport(const void * data, uint32_t length) LOCALONLY;
+    bool dequeuePendingOutput(void * hdrOut, void * bufOut, uint32_t maxLen, uint32_t * outLen) LOCALONLY;
 };
 
 #endif /* ExtenderVirtualAudio_h */

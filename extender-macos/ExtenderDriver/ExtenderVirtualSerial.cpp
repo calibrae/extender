@@ -1,4 +1,5 @@
 #include <os/log.h>
+#include <string.h>
 #include <DriverKit/IOLib.h>
 #include <DriverKit/IOService.h>
 
@@ -7,65 +8,48 @@
 
 #define LOG_PREFIX "ExtenderSerial"
 
-// Ring buffer size for serial data
-#define EXTENDER_SERIAL_BUFFER_SIZE 16384
+namespace {
+
+struct PendingOutputEntry {
+    uint8_t  data[EXTENDER_MAX_TRANSFER_SIZE];
+    uint32_t length;
+    uint32_t endpoint;
+    uint32_t requestType;
+    bool     valid;
+};
+
+constexpr uint32_t kPendingOutputCapacity = EXTENDER_MAX_PENDING_OUTPUTS;
+
+}  // namespace
 
 struct ExtenderVirtualSerial_IVars {
-    // Line coding
     uint32_t baudRate;
     uint8_t  dataBits;
+    uint8_t  halfStopBits;
     uint8_t  parity;
-    uint8_t  stopBits;
+    bool     dtr;
+    bool     rts;
 
-    // Device identity
-    uint16_t vendorId;
-    uint16_t productId;
-    char     productName[64];
+    PendingOutputEntry pending[kPendingOutputCapacity];
+    uint32_t           pendingHead;
+    uint32_t           pendingTail;
+    uint32_t           pendingCount;
 
-    // State
     bool     started;
-    uint32_t deviceId;
-    bool     dtrState;
-    bool     rtsState;
-
-    // Data buffers (ring buffers)
-    // RX: data from remote device -> macOS applications
-    uint8_t  rxBuffer[EXTENDER_SERIAL_BUFFER_SIZE];
-    uint32_t rxHead;
-    uint32_t rxTail;
-    uint32_t rxCount;
-
-    // TX: data from macOS applications -> remote device
-    uint8_t  txBuffer[EXTENDER_SERIAL_BUFFER_SIZE];
-    uint32_t txHead;
-    uint32_t txTail;
-    uint32_t txCount;
 };
 
 bool ExtenderVirtualSerial::init()
 {
     if (!super::init()) return false;
-
     ivars = IONewZero(ExtenderVirtualSerial_IVars, 1);
     if (!ivars) return false;
-
-    // Default: 9600 8N1
     ivars->baudRate = 9600;
     ivars->dataBits = 8;
+    ivars->halfStopBits = 2;
     ivars->parity = 0;
-    ivars->stopBits = 1;
-
-    ivars->vendorId = 0;
-    ivars->productId = 0;
-    strncpy(ivars->productName, "Extender Virtual Serial", sizeof(ivars->productName) - 1);
+    ivars->dtr = false;
+    ivars->rts = false;
     ivars->started = false;
-    ivars->deviceId = 0;
-    ivars->dtrState = false;
-    ivars->rtsState = false;
-
-    ivars->rxHead = ivars->rxTail = ivars->rxCount = 0;
-    ivars->txHead = ivars->txTail = ivars->txCount = 0;
-
     os_log(OS_LOG_DEFAULT, LOG_PREFIX ": init");
     return true;
 }
@@ -74,26 +58,121 @@ kern_return_t IMPL(ExtenderVirtualSerial, Start)
 {
     kern_return_t ret = Start(provider, SUPERDISPATCH);
     if (ret != kIOReturnSuccess) {
-        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Start failed: 0x%x", ret);
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Start super failed: 0x%x", ret);
         return ret;
     }
-
     ivars->started = true;
-    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Device started (%u baud, %u%c%u)",
-           ivars->baudRate, ivars->dataBits,
-           ivars->parity == 0 ? 'N' : (ivars->parity == 1 ? 'O' : 'E'),
-           ivars->stopBits);
-
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Started");
     RegisterService();
     return kIOReturnSuccess;
 }
 
 kern_return_t IMPL(ExtenderVirtualSerial, Stop)
 {
-    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Device stopped");
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Stop");
     ivars->started = false;
-
     IOSafeDeleteNULL(ivars, ExtenderVirtualSerial_IVars, 1);
-
     return Stop(provider, SUPERDISPATCH);
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwResetFIFO)
+{
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwResetFIFO tx=%d rx=%d", tx, rx);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwSendBreak)
+{
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwSendBreak %d", sendBreak);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwProgramUART)
+{
+    ivars->baudRate = baudRate;
+    ivars->dataBits = nDataBits;
+    ivars->halfStopBits = nHalfStopBits;
+    ivars->parity = parity;
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwProgramUART baud=%u data=%u stop/2=%u parity=%u",
+           baudRate, nDataBits, nHalfStopBits, parity);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwProgramBaudRate)
+{
+    ivars->baudRate = baudRate;
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwProgramBaudRate %u", baudRate);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwProgramMCR)
+{
+    ivars->dtr = dtr;
+    ivars->rts = rts;
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwProgramMCR dtr=%d rts=%d", dtr, rts);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwGetModemStatus)
+{
+    if (cts) *cts = true;
+    if (dsr) *dsr = true;
+    if (ri)  *ri  = false;
+    if (dcd) *dcd = true;
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwProgramLatencyTimer)
+{
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwProgramLatencyTimer %u", latency);
+    return kIOReturnSuccess;
+}
+
+kern_return_t IMPL(ExtenderVirtualSerial, HwProgramFlowControl)
+{
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": HwProgramFlowControl arg=%u xon=0x%02x xoff=0x%02x", arg, xon, xoff);
+    return kIOReturnSuccess;
+}
+
+static bool enqueuePending(ExtenderVirtualSerial_IVars *ivars,
+                           uint32_t requestType,
+                           const void *bytes,
+                           uint32_t length)
+{
+    if (length > EXTENDER_MAX_TRANSFER_SIZE) return false;
+    if (ivars->pendingCount >= kPendingOutputCapacity) return false;
+    PendingOutputEntry &entry = ivars->pending[ivars->pendingTail];
+    entry.requestType = requestType;
+    entry.endpoint = 0;
+    entry.length = length;
+    if (length > 0 && bytes) memcpy(entry.data, bytes, length);
+    entry.valid = true;
+    ivars->pendingTail = (ivars->pendingTail + 1) % kPendingOutputCapacity;
+    ivars->pendingCount++;
+    return true;
+}
+
+void ExtenderVirtualSerial::submitInputReport(const void *data, uint32_t length)
+{
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": submitInputReport len=%u (drop — rx queue TODO)", length);
+    (void)data;
+}
+
+bool ExtenderVirtualSerial::dequeuePendingOutput(void *hdrOut, void *bufOut, uint32_t maxLen, uint32_t *outLen)
+{
+    if (!ivars || !hdrOut || !outLen) return false;
+    if (ivars->pendingCount == 0) { *outLen = 0; return false; }
+    PendingOutputEntry &entry = ivars->pending[ivars->pendingHead];
+    ExtenderPendingOutputHeader *hdr = (ExtenderPendingOutputHeader *)hdrOut;
+    hdr->deviceId = 0;
+    hdr->endpoint = entry.endpoint;
+    hdr->requestType = entry.requestType;
+    uint32_t copyLen = entry.length < maxLen ? entry.length : maxLen;
+    hdr->dataLength = copyLen;
+    if (copyLen > 0 && bufOut) memcpy(bufOut, entry.data, copyLen);
+    *outLen = copyLen;
+    entry.valid = false;
+    ivars->pendingHead = (ivars->pendingHead + 1) % kPendingOutputCapacity;
+    ivars->pendingCount--;
+    return true;
 }

@@ -11,6 +11,7 @@
 #include "ExtenderVirtualNetwork.h"
 #include "ExtenderVirtualSerial.h"
 #include "ExtenderVirtualAudio.h"
+#include "ExtenderExportDevice.h"
 
 #define LOG_PREFIX "ExtenderUC"
 
@@ -111,8 +112,21 @@ kern_return_t IMPL(ExtenderUserClient, Stop)
 
 // --- Private helpers ---
 
+static const char *propertiesKeyForDeviceType(uint64_t deviceType)
+{
+    switch ((ExtenderDeviceType)deviceType) {
+    case kDeviceTypeHID:     return "VirtualHIDProperties";
+    case kDeviceTypeStorage: return "VirtualStorageProperties";
+    case kDeviceTypeSerial:  return "VirtualSerialProperties";
+    case kDeviceTypeNetwork: return "VirtualNetworkProperties";
+    case kDeviceTypeAudio:   return "VirtualAudioProperties";
+    }
+    return nullptr;
+}
+
 static kern_return_t handleCreateDevice(
     ExtenderDriver_IVars *driverIVars,
+    ExtenderDriver *driver,
     uint64_t deviceType,
     uint64_t deviceId)
 {
@@ -126,17 +140,29 @@ static kern_return_t handleCreateDevice(
         return kIOReturnExclusiveAccess;
     }
 
-    // Mark slot as active with type; actual device object is created on first configure
+    const char *propsKey = propertiesKeyForDeviceType(deviceType);
+    if (!propsKey) {
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": CreateDevice: unknown device type %llu", deviceType);
+        return kIOReturnBadArgument;
+    }
+
+    IOService *service = nullptr;
+    kern_return_t ret = driver->Create(driver, propsKey, &service);
+    if (ret != kIOReturnSuccess || !service) {
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": CreateDevice: Create(%s) failed: 0x%x", propsKey, ret);
+        return ret == kIOReturnSuccess ? kIOReturnNoResources : ret;
+    }
+
     driverIVars->devices[deviceId].active = true;
     driverIVars->devices[deviceId].deviceType = (uint32_t)deviceType;
-    driverIVars->devices[deviceId].device = nullptr;
+    driverIVars->devices[deviceId].device = service;
     driverIVars->devices[deviceId].vendorId = 0;
     driverIVars->devices[deviceId].productId = 0;
     driverIVars->devices[deviceId].productName[0] = '\0';
     driverIVars->deviceCount++;
 
-    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Created device slot %llu type %llu (count: %u)",
-           deviceId, deviceType, driverIVars->deviceCount);
+    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": Created device slot %llu type %llu (%s, count: %u)",
+           deviceId, deviceType, propsKey, driverIVars->deviceCount);
     return kIOReturnSuccess;
 }
 
@@ -153,6 +179,10 @@ static kern_return_t handleDestroyDevice(
     }
 
     if (driverIVars->devices[deviceId].device) {
+        IOService *svc = OSDynamicCast(IOService, driverIVars->devices[deviceId].device);
+        if (svc) {
+            svc->Terminate(0);
+        }
         driverIVars->devices[deviceId].device->release();
         driverIVars->devices[deviceId].device = nullptr;
     }
@@ -180,7 +210,6 @@ static kern_return_t handleSubmitInput(
 
     auto &slot = driverIVars->devices[deviceId];
 
-    // Read data from struct input (OSData for small buffers)
     if (!arguments->structureInput) {
         os_log(OS_LOG_DEFAULT, LOG_PREFIX ": SubmitInput: no data buffer");
         return kIOReturnBadArgument;
@@ -194,17 +223,44 @@ static kern_return_t handleSubmitInput(
         return kIOReturnBadArgument;
     }
 
-    // TODO: Once HIDDriverKit/AudioDriverKit/NetworkingDriverKit frameworks are linked,
-    // forward data to the appropriate virtual device (e.g., handleReport for HID).
-    // For now, just log the input submission.
-    os_log(OS_LOG_DEFAULT, LOG_PREFIX ": SubmitInput: device %llu endpoint %llu len %llu",
-           deviceId, endpoint, dataLength);
-    return kIOReturnSuccess;
+    switch ((ExtenderDeviceType)slot.deviceType) {
+    case kDeviceTypeHID: {
+        ExtenderVirtualHID *hid = OSDynamicCast(ExtenderVirtualHID, slot.device);
+        if (!hid) return kIOReturnNotReady;
+        hid->submitInputReport(inputBytes, (uint32_t)dataLength);
+        return kIOReturnSuccess;
+    }
+    case kDeviceTypeStorage: {
+        ExtenderVirtualStorage *st = OSDynamicCast(ExtenderVirtualStorage, slot.device);
+        if (!st) return kIOReturnNotReady;
+        st->submitInputReport(inputBytes, (uint32_t)dataLength);
+        return kIOReturnSuccess;
+    }
+    case kDeviceTypeSerial: {
+        ExtenderVirtualSerial *se = OSDynamicCast(ExtenderVirtualSerial, slot.device);
+        if (!se) return kIOReturnNotReady;
+        se->submitInputReport(inputBytes, (uint32_t)dataLength);
+        return kIOReturnSuccess;
+    }
+    case kDeviceTypeNetwork: {
+        ExtenderVirtualNetwork *nw = OSDynamicCast(ExtenderVirtualNetwork, slot.device);
+        if (!nw) return kIOReturnNotReady;
+        nw->submitInputReport(inputBytes, (uint32_t)dataLength);
+        return kIOReturnSuccess;
+    }
+    case kDeviceTypeAudio: {
+        ExtenderVirtualAudio *au = OSDynamicCast(ExtenderVirtualAudio, slot.device);
+        if (!au) return kIOReturnNotReady;
+        au->submitInputReport(inputBytes, (uint32_t)dataLength);
+        return kIOReturnSuccess;
+    }
+    }
+    return kIOReturnBadArgument;
 }
 
 static kern_return_t handleGetPendingOutput(
     ExtenderDriver_IVars *driverIVars,
-    ExtenderUserClient_IVars *ucIVars,
+    ExtenderUserClient_IVars * /*ucIVars*/,
     uint64_t deviceId,
     IOUserClientMethodArguments *arguments)
 {
@@ -212,38 +268,49 @@ static kern_return_t handleGetPendingOutput(
         return kIOReturnNotFound;
     }
 
-    auto &queue = ucIVars->outputQueues[deviceId];
+    auto &slot = driverIVars->devices[deviceId];
 
-    if (queue.count == 0) {
-        // No pending output - return empty OSData
+    uint8_t responseBuffer[sizeof(ExtenderPendingOutputHeader) + EXTENDER_MAX_TRANSFER_SIZE];
+    ExtenderPendingOutputHeader *hdr = (ExtenderPendingOutputHeader *)responseBuffer;
+    uint8_t *payload = responseBuffer + sizeof(ExtenderPendingOutputHeader);
+    uint32_t payloadLen = 0;
+    bool hasOutput = false;
+
+    switch ((ExtenderDeviceType)slot.deviceType) {
+    case kDeviceTypeHID: {
+        ExtenderVirtualHID *hid = OSDynamicCast(ExtenderVirtualHID, slot.device);
+        if (hid) hasOutput = hid->dequeuePendingOutput(hdr, payload, EXTENDER_MAX_TRANSFER_SIZE, &payloadLen);
+        break;
+    }
+    case kDeviceTypeStorage: {
+        ExtenderVirtualStorage *st = OSDynamicCast(ExtenderVirtualStorage, slot.device);
+        if (st) hasOutput = st->dequeuePendingOutput(hdr, payload, EXTENDER_MAX_TRANSFER_SIZE, &payloadLen);
+        break;
+    }
+    case kDeviceTypeSerial: {
+        ExtenderVirtualSerial *se = OSDynamicCast(ExtenderVirtualSerial, slot.device);
+        if (se) hasOutput = se->dequeuePendingOutput(hdr, payload, EXTENDER_MAX_TRANSFER_SIZE, &payloadLen);
+        break;
+    }
+    case kDeviceTypeNetwork: {
+        ExtenderVirtualNetwork *nw = OSDynamicCast(ExtenderVirtualNetwork, slot.device);
+        if (nw) hasOutput = nw->dequeuePendingOutput(hdr, payload, EXTENDER_MAX_TRANSFER_SIZE, &payloadLen);
+        break;
+    }
+    case kDeviceTypeAudio: {
+        ExtenderVirtualAudio *au = OSDynamicCast(ExtenderVirtualAudio, slot.device);
+        if (au) hasOutput = au->dequeuePendingOutput(hdr, payload, EXTENDER_MAX_TRANSFER_SIZE, &payloadLen);
+        break;
+    }
+    }
+
+    if (!hasOutput) {
         arguments->structureOutput = OSData::withBytes(nullptr, 0);
         return kIOReturnSuccess;
     }
 
-    // Dequeue the oldest pending output
-    auto &entry = queue.entries[queue.head];
-
-    // Build response: header + data
-    uint32_t totalSize = (uint32_t)sizeof(ExtenderPendingOutputHeader) + entry.length;
-    uint8_t responseBuffer[sizeof(ExtenderPendingOutputHeader) + EXTENDER_MAX_TRANSFER_SIZE];
-
-    ExtenderPendingOutputHeader *hdr = (ExtenderPendingOutputHeader *)responseBuffer;
-    hdr->deviceId = (uint32_t)deviceId;
-    hdr->endpoint = entry.endpoint;
-    hdr->dataLength = entry.length;
-    hdr->requestType = entry.requestType;
-
-    if (entry.length > 0) {
-        memcpy(responseBuffer + sizeof(ExtenderPendingOutputHeader),
-               entry.data, entry.length);
-    }
-
+    uint32_t totalSize = (uint32_t)sizeof(ExtenderPendingOutputHeader) + payloadLen;
     arguments->structureOutput = OSData::withBytes(responseBuffer, totalSize);
-
-    entry.valid = false;
-    queue.head = (queue.head + 1) % EXTENDER_MAX_PENDING_OUTPUTS;
-    queue.count--;
-
     return kIOReturnSuccess;
 }
 
@@ -387,7 +454,7 @@ kern_return_t ExtenderUserClient::ExternalMethod(
         }
         uint64_t deviceType = arguments->scalarInput[0];
         uint64_t deviceId   = arguments->scalarInput[1];
-        return handleCreateDevice(driverIVars, deviceType, deviceId);
+        return handleCreateDevice(driverIVars, ivars->driver, deviceType, deviceId);
     }
 
     case kDestroyDevice: {
@@ -430,6 +497,101 @@ kern_return_t ExtenderUserClient::ExternalMethod(
         uint64_t deviceId   = arguments->scalarInput[0];
         uint64_t configType = arguments->scalarInput[1];
         return handleConfigureDevice(driverIVars, deviceId, configType, arguments);
+    }
+
+    case kExportClaimDevice: {
+        if (!arguments || arguments->scalarInputCount < 1) {
+            return kIOReturnBadArgument;
+        }
+        uint64_t locationId = arguments->scalarInput[0];
+        // TODO: walk IOKit registry for IOUSBHostDevice with matching locationID,
+        // call driver->Create(usbDevice, "ExportDeviceProperties", &exportDev),
+        // store in a slot table keyed by exportSlotId, return slotId.
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": kExportClaimDevice loc=0x%llx (stub)", locationId);
+        if (arguments->scalarOutputCount >= 1) {
+            arguments->scalarOutput[0] = 0;
+        }
+        return kIOReturnUnsupported;
+    }
+
+    case kExportReleaseDevice: {
+        if (!arguments || arguments->scalarInputCount < 1) {
+            return kIOReturnBadArgument;
+        }
+        uint64_t slotId = arguments->scalarInput[0];
+        // TODO: look up slot, call exportDev->Terminate(0), release.
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": kExportReleaseDevice slot=%llu (stub)", slotId);
+        return kIOReturnUnsupported;
+    }
+
+    case kExportSubmitURB: {
+        if (!arguments || arguments->scalarInputCount < 3) {
+            return kIOReturnBadArgument;
+        }
+        uint64_t slotId   = arguments->scalarInput[0];
+        uint64_t endpoint = arguments->scalarInput[1];
+        uint64_t urbType  = arguments->scalarInput[2];
+        // TODO: look up slot's ExtenderExportDevice, dispatch to
+        // submitControlTransfer / async bulk / interrupt / iso based on urbType.
+        os_log(OS_LOG_DEFAULT, LOG_PREFIX ": kExportSubmitURB slot=%llu ep=%llu type=%llu (stub)",
+               slotId, endpoint, urbType);
+        return kIOReturnUnsupported;
+    }
+
+    case kExportGetPendingResponse: {
+        if (!arguments || arguments->scalarInputCount < 1) {
+            return kIOReturnBadArgument;
+        }
+        uint64_t slotId = arguments->scalarInput[0];
+        // TODO: look up slot, call dequeuePendingResponse, return payload.
+        arguments->structureOutput = OSData::withBytes(nullptr, 0);
+        (void)slotId;
+        return kIOReturnSuccess;
+    }
+
+    case kCompleteRequest: {
+        // In: scalar[0]=deviceId, scalar[1]=requestId, scalar[2]=status (kern_return_t).
+        // struct: payload bytes (for getReport completions).
+        if (!arguments || arguments->scalarInputCount < 3) {
+            return kIOReturnBadArgument;
+        }
+        uint64_t deviceId  = arguments->scalarInput[0];
+        uint64_t requestId = arguments->scalarInput[1];
+        kern_return_t status = (kern_return_t)arguments->scalarInput[2];
+
+        if (deviceId >= EXTENDER_MAX_DEVICES || !driverIVars->devices[deviceId].active) {
+            return kIOReturnNotFound;
+        }
+        auto &slot = driverIVars->devices[deviceId];
+
+        const void *payload = nullptr;
+        uint32_t payloadLen = 0;
+        if (arguments->structureInput) {
+            payload = arguments->structureInput->getBytesNoCopy();
+            payloadLen = arguments->structureInput->getLength();
+        }
+
+        switch ((ExtenderDeviceType)slot.deviceType) {
+        case kDeviceTypeHID: {
+            ExtenderVirtualHID *hid = OSDynamicCast(ExtenderVirtualHID, slot.device);
+            if (!hid) return kIOReturnNotReady;
+            hid->completeRequest((uint32_t)requestId, status, payload, payloadLen);
+            return kIOReturnSuccess;
+        }
+        case kDeviceTypeStorage: {
+            ExtenderVirtualStorage *st = OSDynamicCast(ExtenderVirtualStorage, slot.device);
+            if (!st) return kIOReturnNotReady;
+            st->completeRequest((uint32_t)requestId, status, payload, payloadLen);
+            return kIOReturnSuccess;
+        }
+        case kDeviceTypeSerial:
+        case kDeviceTypeNetwork:
+        case kDeviceTypeAudio:
+            // Completion path not yet wired for these classes.
+            os_log(OS_LOG_DEFAULT, LOG_PREFIX ": kCompleteRequest: type %u not wired", slot.deviceType);
+            return kIOReturnSuccess;
+        }
+        return kIOReturnBadArgument;
     }
 
     default:

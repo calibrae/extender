@@ -102,6 +102,12 @@ const SELECTOR_GET_PENDING_OUTPUT: u32 = 3;
 const SELECTOR_GET_DEVICE_COUNT: u32 = 4;
 /// Configure a virtual device with descriptors or parameters.
 const SELECTOR_CONFIGURE_DEVICE: u32 = 5;
+/// Async completion (daemon → driver) for a request previously surfaced via GET_PENDING_OUTPUT.
+const SELECTOR_COMPLETE_REQUEST: u32 = 10;
+
+/// Layout of the ExtenderPendingOutputHeader emitted by the driver. Keep in
+/// sync with extender-macos/ExtenderDriver/ExtenderProtocol.h.
+const PENDING_OUTPUT_HEADER_SIZE: usize = 24;
 
 // ---------------------------------------------------------------------------
 // Device types
@@ -243,7 +249,8 @@ impl MacOSVhciDriver {
         endpoint: u32,
         data: &[u8],
     ) -> Result<(), ClientError> {
-        let scalars = [device_id as u64, endpoint as u64];
+        // Dext expects 3 scalars: deviceId, endpoint, dataLength.
+        let scalars = [device_id as u64, endpoint as u64, data.len() as u64];
         let kr = unsafe {
             IOConnectCallMethod(
                 self.connect,
@@ -261,18 +268,44 @@ impl MacOSVhciDriver {
         check_kr(kr, "submit_input")
     }
 
-    /// Get pending output from a virtual device (requests from driver -> network).
-    ///
-    /// Returns `None` if no request is pending.
+    /// Async completion: deliver the response payload for a request that was
+    /// previously surfaced via `get_pending_output`. The driver matches by
+    /// `request_id` and fires the upstream completion (e.g., HID's CompleteReport
+    /// or storage's CompleteIO).
+    pub fn complete_request(
+        &self,
+        device_id: u32,
+        request_id: u32,
+        status: i32,
+        data: &[u8],
+    ) -> Result<(), ClientError> {
+        let scalars = [device_id as u64, request_id as u64, status as u32 as u64];
+        let kr = unsafe {
+            IOConnectCallMethod(
+                self.connect,
+                SELECTOR_COMPLETE_REQUEST,
+                scalars.as_ptr(),
+                scalars.len() as u32,
+                data.as_ptr() as *const c_void,
+                data.len(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        check_kr(kr, "complete_request")
+    }
+
+    /// Poll for a pending host->device request the driver has queued. The
+    /// driver returns the full `ExtenderPendingOutputHeader` plus payload as a
+    /// single struct output (no scalar outputs); an empty struct means nothing
+    /// is pending.
     pub fn get_pending_output(
         &self,
         device_id: u32,
     ) -> Result<Option<PendingRequest>, ClientError> {
         let scalars_in = [device_id as u64];
-        let mut scalars_out = [0u64; 3]; // [device_id, endpoint, request_id]
-        let mut scalars_out_cnt = scalars_out.len() as u32;
-
-        // Buffer for the output struct data.
         let mut buf = vec![0u8; 65536];
         let mut buf_len = buf.len();
 
@@ -284,38 +317,63 @@ impl MacOSVhciDriver {
                 scalars_in.len() as u32,
                 ptr::null(),
                 0,
-                scalars_out.as_mut_ptr(),
-                &mut scalars_out_cnt,
+                ptr::null_mut(),
+                ptr::null_mut(),
                 buf.as_mut_ptr() as *mut c_void,
                 &mut buf_len,
             )
         };
 
         if kr != KERN_SUCCESS {
-            // Some drivers return a specific code for "nothing pending" rather
-            // than an error. For now, treat any non-success as no data.
-            // TODO: Distinguish "no pending request" from real errors once the
-            // driver's error codes are finalized.
-            if buf_len == 0 && scalars_out_cnt == 0 {
-                return Ok(None);
-            }
             return Err(ClientError::IOKit {
                 code: kr,
                 message: "get_pending_output failed".to_owned(),
             });
         }
 
-        if scalars_out_cnt == 0 || buf_len == 0 {
+        // Empty struct → nothing pending.
+        if buf_len == 0 {
             return Ok(None);
         }
+        if buf_len < PENDING_OUTPUT_HEADER_SIZE {
+            return Err(ClientError::IOKit {
+                code: -1,
+                message: format!(
+                    "get_pending_output: short header {} < {}",
+                    buf_len, PENDING_OUTPUT_HEADER_SIZE
+                ),
+            });
+        }
 
-        buf.truncate(buf_len);
+        // Parse header (little-endian, host byte order — IOKit shares memory in
+        // host endianness).
+        let dev_id = u32::from_ne_bytes(buf[0..4].try_into().unwrap());
+        let endpoint = u32::from_ne_bytes(buf[4..8].try_into().unwrap());
+        let data_length = u32::from_ne_bytes(buf[8..12].try_into().unwrap()) as usize;
+        let _request_type = u32::from_ne_bytes(buf[12..16].try_into().unwrap());
+        let request_id = u32::from_ne_bytes(buf[16..20].try_into().unwrap());
+        // bytes 20..24 are reserved.
+
+        let payload_end = PENDING_OUTPUT_HEADER_SIZE + data_length;
+        if payload_end > buf_len {
+            return Err(ClientError::IOKit {
+                code: -1,
+                message: format!(
+                    "get_pending_output: truncated payload {} > {}",
+                    payload_end, buf_len
+                ),
+            });
+        }
+
+        let mut data = buf;
+        data.truncate(payload_end);
+        let payload = data.split_off(PENDING_OUTPUT_HEADER_SIZE);
 
         Ok(Some(PendingRequest {
-            device_id: scalars_out[0] as u32,
-            endpoint: scalars_out[1] as u32,
-            request_id: scalars_out[2] as u32,
-            data: buf,
+            device_id: dev_id,
+            endpoint,
+            request_id,
+            data: payload,
         }))
     }
 

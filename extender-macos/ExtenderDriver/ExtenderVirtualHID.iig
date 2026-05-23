@@ -27,6 +27,24 @@ public:
         IOOptionBits options,
         uint32_t completionTimeout,
         OSAction * action) override;
+
+    // Daemon-injected input report (called by the user client when bytes arrive
+    // from the remote USB device). Bytes are copied into a fresh
+    // IOBufferMemoryDescriptor and passed to handleReport.
+    void submitInputReport(const void * data, uint32_t length) LOCALONLY;
+
+    // Pop the oldest pending host->device request (getReport/setReport) for the
+    // daemon to forward over USB/IP. Returns true if a request was returned.
+    // hdrOut points to an ExtenderPendingOutputHeader; bufOut receives up to
+    // maxLen bytes of payload; *outLen is set to the payload length written.
+    bool dequeuePendingOutput(void * hdrOut, void * bufOut, uint32_t maxLen, uint32_t * outLen) LOCALONLY;
+
+    // Daemon calls this (via kCompleteRequest) to satisfy a previously-queued
+    // getReport/setReport. requestId matches the value in the corresponding
+    // pending-output header; status is the IOReturn to deliver upstream; bytes
+    // is the response payload (for getReport, written into the host's buffer).
+    void completeRequest(uint32_t requestId, kern_return_t status,
+                         const void * bytes, uint32_t length) LOCALONLY;
 };
 
 #endif

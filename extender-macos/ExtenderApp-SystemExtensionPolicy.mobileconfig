@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadDisplayName</key>
+    <string>Extender System Extension Policy</string>
+    <key>PayloadIdentifier</key>
+    <string>com.calibrae.extender.sysext-policy</string>
+    <key>PayloadOrganization</key>
+    <string>calibrae</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadScope</key>
+    <string>System</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>5C50F1FC-0F4A-4F03-A4CC-D6D7A6C6F8A8</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadDisplayName</key>
+            <string>Allow Extender DriverKit Extension</string>
+            <key>PayloadIdentifier</key>
+            <string>com.calibrae.extender.sysext-policy.payload</string>
+            <key>PayloadType</key>
+            <string>com.apple.system-extension-policy</string>
+            <key>PayloadUUID</key>
+            <string>9C50F1FC-0F4A-4F03-A4CC-D6D7A6C6F8A9</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>AllowUserOverrides</key>
+            <true/>
+            <key>AllowedSystemExtensions</key>
+            <dict>
+                <key>XJQQCN392F</key>
+                <array>
+                    <string>com.calibrae.extender.driver</string>
+                </array>
+            </dict>
+            <key>AllowedSystemExtensionTypes</key>
+            <dict>
+                <key>XJQQCN392F</key>
+                <array>
+                    <string>DriverExtension</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>
